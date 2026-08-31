@@ -92,8 +92,7 @@
 /* ============================================================
    1) 아래 API_URL 에 Apps Script 배포 URL(.../exec) 을 붙여넣으세요.
    ============================================================ */
-const API_URL = "https://script.google.com/macros/s/AKfycbyMi38MYZ021ow-j-O3ZIxMBvy8CALEoSAHnxLoGz3fZ5BmNOlbFczLW6BMpuDxHHd1/exec";
-
+const API_URL ="https://script.google.com/macros/s/AKfycbyMi38MYZ021ow-j-O3ZIxMBvy8CALEoSAHnxLoGz3fZ5BmNOlbFczLW6BMpuDxHHd1/exec"
 const KEY = new URLSearchParams(location.search).get('k') || '';
 
 /* ── 언어 사전 (신할라어는 초안 — 검수 후 수정) ───────────── */
@@ -109,7 +108,10 @@ const I18N = {
     cur_due:'누적 미수금', m_collect:'이번 달 총수금액', my_share:'내 몫(예상)', total_due:'총 미수금',
     m_order:'이번 달 주문', m_deliver:'이번 달 배달', fee:'수수료(%)', save:'저장',
     saved:'저장됐어요', need_cust:'고객을 선택하세요', need_item:'품목을 추가하세요',
-    edit_price:'단가 수정', enter_paid:'받은 금액을 입력하세요', full:'전액'
+    edit_price:'단가 수정', enter_paid:'받은 금액을 입력하세요', full:'전액',
+    tab_pay:'입금확인', pay_wait:'입금대기', confirm_pay:'입금 확인', addr:'주소',
+    bank_title:'입금 계좌 (고객 주문확인 메일에 표시)', bank_name:'은행', bank_account:'계좌번호',
+    bank_holder:'예금주', bank_hint:'고객 주문확인 메일에 이 계좌가 안내됩니다.'
   },
   si:{
     tab_new:'නව ඇණවුම', tab_ready:'සූදානම', tab_deliver:'බෙදා/අයකර', tab_all:'සියලු ඇණවුම්',
@@ -122,16 +124,19 @@ const I18N = {
     cur_due:'මුළු හිඟ මුදල', m_collect:'මෙම මාසයේ එකතුව', my_share:'මගේ කොටස', total_due:'මුළු හිඟ මුදල',
     m_order:'මෙම මාසයේ ඇණවුම්', m_deliver:'මෙම මාසයේ බෙදා හැරීම්', fee:'ගාස්තුව(%)', save:'සුරකින්න',
     saved:'සුරකින ලදී', need_cust:'පාරිභෝගිකයා තෝරන්න', need_item:'භාණ්ඩයක් එක් කරන්න',
-    edit_price:'මිල වෙනස් කරන්න', enter_paid:'මුදල ඇතුළත් කරන්න', full:'සම්පූර්ණ'
+    edit_price:'මිල වෙනස් කරන්න', enter_paid:'මුදල ඇතුළත් කරන්න', full:'සම්පූර්ණ',
+    tab_pay:'ගෙවීම් තහවුරු', pay_wait:'ගෙවීම බලාපොරොත්තුවෙන්', confirm_pay:'ගෙවීම තහවුරු කරන්න', addr:'ලිපිනය',
+    bank_title:'බැංකු ගිණුම (ඇණවුම් ඊමේල් හි පෙන්වයි)', bank_name:'බැංකුව', bank_account:'ගිණුම් අංකය',
+    bank_holder:'ගිණුම් හිමිකරු', bank_hint:'පාරිභෝගික ඇණවුම් ඊමේල් හි මෙම ගිණුම පෙන්වයි.'
   }
 };
 let LANG = localStorage.getItem('oc_lang') || 'ko';
 function t(k){ return (I18N[LANG] && I18N[LANG][k]) || I18N.ko[k] || k; }
 
 const TABS = {
-  boss:  ['new','deliver','all','cust'],
-  vice:  ['ready','deliver','all','cust','item'],
-  admin: ['new','ready','deliver','all','cust','item','admin']
+  boss:  ['new','pay','deliver','all','cust'],
+  vice:  ['ready','pay','deliver','all','cust','item'],
+  admin: ['new','pay','ready','deliver','all','cust','item','admin']
 };
 
 let STATE = { role:'', name:'', cur:'₩', items:[], customers:[], orders:[], tab:'' };
@@ -169,7 +174,7 @@ async function init(){
 function buildNav(){
   const tabs = TABS[STATE.role]||['all'];
   const nav = document.getElementById('nav'); nav.innerHTML='';
-  const lbl = {new:'tab_new',ready:'tab_ready',deliver:'tab_deliver',all:'tab_all',cust:'tab_cust',item:'tab_item',admin:'tab_admin'};
+  const lbl = {new:'tab_new',ready:'tab_ready',pay:'tab_pay',deliver:'tab_deliver',all:'tab_all',cust:'tab_cust',item:'tab_item',admin:'tab_admin'};
   tabs.forEach(tb=>{
     const b=document.createElement('button');
     b.textContent=t(lbl[tb]); b.dataset.tab=tb; b.onclick=()=>go(tb);
@@ -178,7 +183,7 @@ function buildNav(){
 }
 async function go(tab){
   STATE.tab=tab; buildNav();
-  if(['ready','deliver','all'].includes(tab) || tab==='admin'){ STATE.orders = await api('listOrders'); }
+  if(['ready','deliver','all','pay'].includes(tab) || tab==='admin'){ STATE.orders = await api('listOrders'); }
   if(['cust','deliver','new','all'].includes(tab)){ STATE.customers = await api('listCustomers'); }
   render();
 }
@@ -194,6 +199,7 @@ function render(){
   switch(STATE.tab){
     case 'new':     m.innerHTML=viewNew(); bindNew(); break;
     case 'ready':   m.innerHTML=viewList(o=>o.status==='신청'); break;
+    case 'pay':     m.innerHTML=viewPay(); break;
     case 'deliver': m.innerHTML=viewDeliver(); break;
     case 'all':     m.innerHTML=viewAll(); break;
     case 'cust':    m.innerHTML=viewCust(); break;
@@ -270,6 +276,20 @@ function viewList(filter){
 }
 async function markReady(id){ await api('markReady',{id}); toast(t('saved')); go('ready'); }
 
+/* 입금확인 탭 (고객 온라인주문 → 이샨이 스샷 확인 후 입금확인) */
+function viewPay(){
+  const list=STATE.orders.filter(o=>o.status==='입금대기');
+  if(!list.length) return `<div class="empty">${t('empty')}</div>`;
+  return '<div class="cards">'+list.map(o=>`<div class="item">
+    <div class="top"><div><div class="cust">${o.customer} <span class="meta">#${o.custNo||''}</span></div>
+      <div class="meta">${o.date} · ${o.id} · ${prodText(o)}</div></div>
+      <span class="badge b-new">${t('pay_wait')}</span></div>
+    <div class="total" style="border:0;padding:0;margin:6px 0"><span></span><span>${money(o.amount)}</span></div>
+    <button class="btn" onclick="doMarkPaid('${o.id}')">${t('confirm_pay')}</button>
+  </div>`).join('')+'</div>';
+}
+async function doMarkPaid(id){ await api('markPaid',{id}); toast(t('saved')); go('pay'); }
+
 /* 배달·수금 탭 (사장) */
 function viewDeliver(){
   const ready=STATE.orders.filter(o=>o.status==='준비완료');
@@ -314,17 +334,18 @@ function viewAll(){
 /* 고객 */
 function viewCust(){
   const list=STATE.customers.map(c=>`<div class="item" style="margin-bottom:8px">
-    <div class="top"><div><div class="cust">${c.name}</div><div class="meta">${c.phone||''}</div></div>
+    <div class="top"><div><div class="cust">${c.name} <span class="meta">#${c.no||''}</span></div><div class="meta">${c.phone||''}${c.addr?' · '+c.addr:''}</div></div>
       <span class="${c.due>0?'due-red':'due-ok'}">${t('cur_due')} ${money(c.due)}</span></div>
   </div>`).join('') || `<div class="empty">${t('empty')}</div>`;
   return `<div class="card"><h3>${t('add')}</h3>
     <label>${t('name')}</label><input id="cName">
     <label>${t('phone')}</label><input id="cPhone">
+    <label>${t('addr')}</label><input id="cAddr">
     <button class="btn" onclick="addCust()">${t('add')}</button></div><div class="cards">${list}</div>`;
 }
 async function addCust(){
   const name=document.getElementById('cName').value.trim(); if(!name) return toast(t('name'));
-  await api('addCustomer',{name,phone:document.getElementById('cPhone').value.trim()}); toast(t('saved')); go('cust');
+  await api('addCustomer',{name,phone:document.getElementById('cPhone').value.trim(),addr:document.getElementById('cAddr').value.trim()}); toast(t('saved')); go('cust');
 }
 
 /* 품목 */
@@ -368,16 +389,30 @@ async function viewAdmin(m, silent){
       <button class="btn sm blue" style="flex:0 0 auto" onclick="savePct()">${t('save')}</button></div>
     <div class="total"><span>${t('my_share')} (${s.myPercent}%)</span><span>${money(s.myShare)}</span></div>
     <div class="hint">${t('m_collect')} × ${s.myPercent}% — 표시만, 자동 청구 아님 · 10초마다 자동 갱신</div>
+  </div>
+  <div class="card">
+    <h3>${t('bank_title')}</h3>
+    <label>${t('bank_name')}</label><input id="bkName" value="${s.bankName||''}">
+    <label>${t('bank_account')}</label><input id="bkAcc" value="${s.bankAccount||''}">
+    <label>${t('bank_holder')}</label><input id="bkHold" value="${s.bankHolder||''}">
+    <button class="btn" onclick="saveBank()">${t('save')}</button>
+    <div class="hint">${t('bank_hint')}</div>
   </div>`;
   if(ADMIN_TIMER) clearInterval(ADMIN_TIMER);
   ADMIN_TIMER=setInterval(()=>{
     if(STATE.tab!=='admin'){ clearInterval(ADMIN_TIMER); ADMIN_TIMER=null; return; }
-    if(document.activeElement && document.activeElement.id==='pct') return; // % 입력 중이면 건너뜀
+    if(document.activeElement && document.activeElement.tagName==='INPUT') return; // 입력 중이면 건너뜀
     viewAdmin(document.getElementById('main'), true);
   },10000);
 }
 async function savePct(){
   await api('setSetting',{key:'my_percent',value:Number(document.getElementById('pct').value)||0});
+  toast(t('saved')); go('admin');
+}
+async function saveBank(){
+  await api('setSetting',{key:'bank_name',value:document.getElementById('bkName').value});
+  await api('setSetting',{key:'bank_account',value:document.getElementById('bkAcc').value});
+  await api('setSetting',{key:'bank_holder',value:document.getElementById('bkHold').value});
   toast(t('saved')); go('admin');
 }
 

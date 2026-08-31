@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>주문하기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Sinhala:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--green:#16a34a;--green-d:#15803d;--bg:#f4f6f5;--card:#fff;--ink:#1f2937;
+        --muted:#6b7280;--line:#e5e7eb;--blue:#2563eb;--red:#dc2626;--amber:#d97706}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Malgun Gothic","Apple SD Gothic Neo",sans-serif;
+       background:var(--bg);color:var(--ink);font-size:16px;line-height:1.45}
+  body.lang-si{font-family:"Noto Sans Sinhala","Malgun Gothic",sans-serif}
+  header{position:sticky;top:0;z-index:20;background:var(--green);color:#fff;padding:12px 14px;display:flex;align-items:center;gap:10px}
+  header .title{font-weight:700;font-size:18px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hbtn{background:rgba(255,255,255,.2);border:0;color:#fff;font-weight:700;padding:7px 11px;border-radius:8px;font-size:14px}
+  nav{display:flex;gap:6px;background:#fff;padding:8px 10px;border-bottom:1px solid var(--line);position:sticky;top:52px;z-index:15}
+  nav button{flex:1;border:1px solid var(--line);background:#fff;color:var(--muted);padding:9px;border-radius:20px;font-size:14px;font-weight:600}
+  nav button.on{background:var(--green);color:#fff;border-color:var(--green)}
+  main{padding:14px;max-width:640px;margin:0 auto}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+  .card h3{margin:0 0 10px;font-size:16px}
+  label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+  input,select{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:#fff;color:var(--ink)}
+  .btn{width:100%;border:0;border-radius:11px;padding:14px;font-size:16px;font-weight:700;color:#fff;background:var(--green);margin-top:12px}
+  .btn:active{transform:scale(.99)}
+  .btn.grey{background:#6b7280}.btn.sm{width:auto;padding:9px 14px;font-size:14px;margin:0}
+  .switch{text-align:center;margin-top:12px;color:var(--blue);font-size:14px;font-weight:600}
+  .prod{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px}
+  .prod .nm{flex:1}.prod .nm b{display:block}.prod .nm span{font-size:13px;color:var(--muted)}
+  .qty{display:flex;align-items:center;gap:8px}
+  .qty button{width:34px;height:34px;border:1px solid var(--line);background:#fff;border-radius:8px;font-size:18px;font-weight:700;color:var(--green)}
+  .qty span{min-width:22px;text-align:center;font-weight:700}
+  .cartbar{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--line);padding:12px 14px;margin:0 -14px -14px;
+           display:flex;align-items:center;gap:10px}
+  .cartbar .sum{flex:1}.cartbar .sum b{font-size:18px}.cartbar .sum span{font-size:12px;color:var(--muted);display:block}
+  .order{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px}
+  .order .top{display:flex;justify-content:space-between;gap:8px}
+  .badge{font-size:12px;font-weight:700;padding:3px 9px;border-radius:20px}
+  .b-wait{background:#fef3c7;color:var(--amber)}.b-go{background:#dbeafe;color:var(--blue)}.b-done{background:#dcfce7;color:var(--green-d)}
+  .empty{text-align:center;color:var(--muted);padding:30px 10px;font-size:14px}
+  .hint{font-size:13px;color:var(--muted);margin-top:6px;line-height:1.5}
+  #toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:#111;color:#fff;padding:11px 18px;
+         border-radius:22px;font-size:14px;opacity:0;transition:.25s;z-index:50;pointer-events:none;max-width:90%;text-align:center}
+  #toast.show{opacity:.95}
+  #loading{position:fixed;inset:0;background:rgba(255,255,255,.7);display:none;align-items:center;justify-content:center;z-index:60}
+  .spin{width:38px;height:38px;border:4px solid #d1fae5;border-top-color:var(--green);border-radius:50%;animation:sp 1s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<header>
+  <div class="title" id="appName">주문하기</div>
+  <span class="hbtn" id="me" style="display:none"></span>
+  <button class="hbtn" id="langBtn" onclick="toggleLang()">සිං</button>
+  <button class="hbtn" id="logoutBtn" onclick="logout()" style="display:none">↩</button>
+</header>
+<nav id="nav" style="display:none"></nav>
+<main id="main"></main>
+<div id="toast"></div>
+<div id="loading"><div class="spin"></div></div>
+
+<script>
+/* ============================================================
+   API_URL 에 index.html 과 "똑같은" Apps Script 배포 URL 을 붙여넣으세요.
+   ============================================================ */
+const API_URL = "https://script.google.com/macros/s/AKfycbyMi38MYZ021ow-j-O3ZIxMBvy8CALEoSAHnxLoGz3fZ5BmNOlbFczLW6BMpuDxHHd1/exec";
+
+const I18N = {
+  ko:{ login:'로그인', signup:'회원가입', id_ph:'이메일 또는 전화번호', pw:'비밀번호',
+       email:'이메일', name:'이름', phone:'전화번호', addr:'주소',
+       to_signup:'처음이세요? 회원가입', to_login:'이미 계정이 있어요 · 로그인',
+       tab_shop:'상점', tab_orders:'내 주문', cart:'장바구니', order_now:'주문하기',
+       total:'합계', empty_cart:'담은 상품이 없어요', empty_order:'주문 내역이 없어요',
+       welcome:'환영합니다', your_no:'회원님의 고객번호',
+       st_wait:'입금대기', st_go:'진행중', st_done:'배달완료',
+       order_ok:'주문 완료! 확인 메일을 보냈어요', order_ok2:'메일의 계좌로 입금 후, 이샨에게 입금 스크린샷과 주문번호를 보내주세요.',
+       signup_ok:'회원가입 완료! 고객번호', need_id:'이메일/전화번호와 비밀번호를 입력하세요',
+       won:'원' },
+  si:{ login:'පිවිසෙන්න', signup:'ලියාපදිංචිය', id_ph:'ඊමේල් හෝ දුරකථනය', pw:'මුරපදය',
+       email:'ඊමේල්', name:'නම', phone:'දුරකථනය', addr:'ලිපිනය',
+       to_signup:'මුල් වරද? ලියාපදිංචි වන්න', to_login:'දැනටමත් ගිණුමක් තිබේ · පිවිසෙන්න',
+       tab_shop:'සාප්පුව', tab_orders:'මගේ ඇණවුම්', cart:'කරත්තය', order_now:'ඇණවුම් කරන්න',
+       total:'එකතුව', empty_cart:'භාණ්ඩ නැත', empty_order:'ඇණවුම් නැත',
+       welcome:'ආයුබෝවන්', your_no:'ඔබේ පාරිභෝගික අංකය',
+       st_wait:'ගෙවීම බලාපොරොත්තුවෙන්', st_go:'ක්‍රියාත්මකයි', st_done:'බෙදා හරින ලදී',
+       order_ok:'ඇණවුම සම්පූර්ණයි! ඊමේල් එකක් යවන ලදී', order_ok2:'ඊමේල් හි ගිණුමට ගෙවා, ඉෂාන්ට රිසිට්පත සහ ඇණවුම් අංකය එවන්න.',
+       signup_ok:'ලියාපදිංචිය සම්පූර්ණයි! අංකය', need_id:'ඊමේල්/දුරකථනය සහ මුරපදය ඇතුළත් කරන්න',
+       won:'' }
+};
+let LANG = localStorage.getItem('shop_lang') || 'ko';
+function t(k){ return (I18N[LANG]&&I18N[LANG][k]) || I18N.ko[k] || k; }
+
+let ME = null;             // {no, name}
+let ITEMS = [], CART = {}, CFG = {cur:'₩'};
+let AUTHMODE = 'login', TAB = 'shop';
+
+function loading(on){ document.getElementById('loading').style.display=on?'flex':'none'; }
+function toast(m){ const e=document.getElementById('toast'); e.textContent=m; e.classList.add('show'); setTimeout(()=>e.classList.remove('show'),2600); }
+function money(n){ return (CFG.cur||'₩')+Number(n||0).toLocaleString(); }
+async function api(action, params={}){
+  if(API_URL.indexOf('http')!==0){ toast('API_URL을 설정하세요'); throw new Error('no url'); }
+  loading(true);
+  try{
+    const res=await fetch(API_URL,{method:'POST',body:JSON.stringify(Object.assign({action},params))});
+    const j=await res.json(); if(!j.ok) throw new Error(j.error||'오류'); return j.data;
+  }catch(e){ toast(e.message||'통신 오류'); throw e; }
+  finally{ loading(false); }
+}
+
+function toggleLang(){ LANG=LANG==='ko'?'si':'ko'; localStorage.setItem('shop_lang',LANG);
+  document.body.classList.toggle('lang-si',LANG==='si');
+  document.getElementById('langBtn').textContent=LANG==='ko'?'සිං':'한국어'; render(); }
+
+async function boot(){
+  document.body.classList.toggle('lang-si',LANG==='si');
+  document.getElementById('langBtn').textContent=LANG==='ko'?'සිං':'한국어';
+  try{ CFG = await api('shopConfig'); CFG.cur=CFG.currency||'₩';
+       document.getElementById('appName').textContent=CFG.appName||'주문하기'; }catch(e){}
+  const saved=localStorage.getItem('shop_me');
+  if(saved){ ME=JSON.parse(saved); afterLogin(); } else { render(); }
+}
+
+/* ── 로그인/회원가입 ── */
+function render(){
+  const m=document.getElementById('main');
+  if(!ME){ document.getElementById('nav').style.display='none'; m.innerHTML=authView(); return; }
+  document.getElementById('nav').style.display='flex';
+  buildNav();
+  if(TAB==='shop'){ m.innerHTML=shopView(); } else { m.innerHTML=''; ordersView(m); }
+}
+function authView(){
+  if(AUTHMODE==='login'){
+    return `<div class="card"><h3>${t('login')}</h3>
+      <label>${t('id_ph')}</label><input id="lid" placeholder="${t('id_ph')}">
+      <label>${t('pw')}</label><input id="lpw" type="password">
+      <button class="btn" onclick="doLogin()">${t('login')}</button>
+      <div class="switch" onclick="AUTHMODE='signup';render()">${t('to_signup')}</div></div>`;
+  }
+  return `<div class="card"><h3>${t('signup')}</h3>
+    <label>${t('email')}</label><input id="sEmail" type="email">
+    <label>${t('pw')}</label><input id="sPw" type="password">
+    <label>${t('name')}</label><input id="sName">
+    <label>${t('phone')}</label><input id="sPhone">
+    <label>${t('addr')}</label><input id="sAddr">
+    <button class="btn" onclick="doSignup()">${t('signup')}</button>
+    <div class="switch" onclick="AUTHMODE='login';render()">${t('to_login')}</div></div>`;
+}
+async function doLogin(){
+  const id=document.getElementById('lid').value.trim(), pw=document.getElementById('lpw').value;
+  if(!id||!pw) return toast(t('need_id'));
+  const c=await api('login',{id,pw}); ME={no:c.no,name:c.name};
+  localStorage.setItem('shop_me',JSON.stringify(ME)); afterLogin();
+}
+async function doSignup(){
+  const email=document.getElementById('sEmail').value.trim(), pw=document.getElementById('sPw').value;
+  const name=document.getElementById('sName').value.trim();
+  if(!email||!pw||!name) return toast(t('need_id'));
+  const r=await api('signup',{email,pw,name,phone:document.getElementById('sPhone').value.trim(),addr:document.getElementById('sAddr').value.trim()});
+  toast(t('signup_ok')+' '+r.no);
+  ME={no:r.no,name:r.name}; localStorage.setItem('shop_me',JSON.stringify(ME)); afterLogin();
+}
+function logout(){ localStorage.removeItem('shop_me'); ME=null; CART={}; TAB='shop';
+  document.getElementById('me').style.display='none'; document.getElementById('logoutBtn').style.display='none'; render(); }
+
+async function afterLogin(){
+  document.getElementById('me').style.display='inline-block';
+  document.getElementById('me').textContent='#'+ME.no;
+  document.getElementById('logoutBtn').style.display='inline-block';
+  ITEMS = await api('shopItems'); TAB='shop'; render();
+}
+
+/* ── 탭 ── */
+function buildNav(){
+  const nav=document.getElementById('nav'); nav.innerHTML='';
+  [['shop','tab_shop'],['orders','tab_orders']].forEach(([k,l])=>{
+    const b=document.createElement('button'); b.textContent=t(l);
+    if(k===TAB)b.classList.add('on'); b.onclick=()=>{TAB=k;render();}; nav.appendChild(b);
+  });
+}
+
+/* ── 상점 + 장바구니 ── */
+function shopView(){
+  const rows=ITEMS.map(it=>{
+    const q=CART[it.name]?CART[it.name].qty:0;
+    const nm = LANG==='si'&&it.si ? it.si : it.name;
+    return `<div class="prod"><div class="nm"><b>${nm}</b><span>${money(it.price)}</span></div>
+      <div class="qty"><button onclick="chg('${encodeURIComponent(it.name)}',${it.price},-1)">−</button>
+      <span id="q_${it.name.replace(/\W/g,'_')}">${q}</span>
+      <button onclick="chg('${encodeURIComponent(it.name)}',${it.price},1)">＋</button></div></div>`;
+  }).join('') || `<div class="empty">${t('empty_cart')}</div>`;
+  const total=cartTotal();
+  return rows + `<div class="cartbar">
+    <div class="sum"><b>${money(total)}</b><span>${t('cart')}</span></div>
+    <button class="btn sm" style="flex:0 0 auto" onclick="placeOrder()">${t('order_now')}</button></div>`;
+}
+function chg(encName,price,d){
+  const name=decodeURIComponent(encName);
+  const cur=CART[name]?CART[name].qty:0; const q=Math.max(0,cur+d);
+  if(q===0) delete CART[name]; else CART[name]={price,qty:q};
+  render();
+}
+function cartTotal(){ let s=0; for(const k in CART)s+=CART[k].price*CART[k].qty; return s; }
+async function placeOrder(){
+  const lines=Object.keys(CART).map(name=>({name,price:CART[name].price,qty:CART[name].qty}));
+  if(!lines.length) return toast(t('empty_cart'));
+  await api('placeOrder',{no:ME.no,lines});
+  CART={}; toast(t('order_ok'));
+  setTimeout(()=>toast(t('order_ok2')),2700);
+  TAB='orders'; render();
+}
+
+/* ── 내 주문 ── */
+async function ordersView(m){
+  const list=await api('myOrders',{no:ME.no});
+  if(!list.length){ m.innerHTML=`<div class="empty">${t('empty_order')}</div>`; return; }
+  m.innerHTML=list.map(o=>{
+    let b='<span class="badge b-go">'+t('st_go')+'</span>';
+    if(o.status==='입금대기') b='<span class="badge b-wait">'+t('st_wait')+'</span>';
+    else if(o.status==='배달완료') b='<span class="badge b-done">'+t('st_done')+'</span>';
+    const items=(o.lines||[]).map(l=>l.name+' ×'+l.qty).join(', ');
+    return `<div class="order"><div class="top"><div><b>${o.id}</b><div style="font-size:13px;color:var(--muted)">${o.date} · ${items}</div></div>${b}</div>
+      <div style="text-align:right;font-weight:700;margin-top:6px">${money(o.amount)}</div></div>`;
+  }).join('');
+}
+
+boot();
+</script>
+</body>
+</html>
