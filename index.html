@@ -139,17 +139,18 @@ let STATE = { role:'', name:'', cur:'₩', items:[], customers:[], orders:[], ta
 /* ── 통신 ───────────────────────────── */
 function loading(on){ document.getElementById('loading').style.display = on?'flex':'none'; }
 function toast(msg){ const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),1800); }
-async function api(action, params={}){
+async function api(action, params={}, silent){
   if(API_URL.indexOf('http')!==0){ toast('API_URL을 먼저 설정하세요'); throw new Error('no api url'); }
-  loading(true);
+  if(!silent) loading(true);
   try{
     const res = await fetch(API_URL,{method:'POST',body:JSON.stringify(Object.assign({k:KEY,action},params))});
     const j = await res.json();
     if(!j.ok) throw new Error(j.error||'오류');
     return j.data;
-  }catch(e){ toast(e.message||'통신 오류'); throw e; }
-  finally{ loading(false); }
+  }catch(e){ if(!silent) toast(e.message||'통신 오류'); throw e; }
+  finally{ if(!silent) loading(false); }
 }
+let ADMIN_TIMER=null;
 function money(n){ return STATE.cur + Number(n||0).toLocaleString(); }
 
 /* ── 초기화 ─────────────────────────── */
@@ -189,6 +190,7 @@ function toggleLang(){ LANG = LANG==='ko'?'si':'ko'; localStorage.setItem('oc_la
 /* ── 렌더 ───────────────────────────── */
 function render(){
   const m=document.getElementById('main');
+  if(ADMIN_TIMER){ clearInterval(ADMIN_TIMER); ADMIN_TIMER=null; }
   switch(STATE.tab){
     case 'new':     m.innerHTML=viewNew(); bindNew(); break;
     case 'ready':   m.innerHTML=viewList(o=>o.status==='신청'); break;
@@ -350,8 +352,8 @@ async function savePrice(id){
 }
 
 /* 관리자 */
-async function viewAdmin(m){
-  const s=await api('getSummary');
+async function viewAdmin(m, silent){
+  const s=await api('getSummary',{},silent);
   m.innerHTML=`
   <div class="kpi">
     <div class="box"><div class="l">${t('m_collect')}</div><div class="n">${money(s.monthCollected)}</div></div>
@@ -365,8 +367,14 @@ async function viewAdmin(m){
     <div class="row"><input type="number" id="pct" value="${s.myPercent}" step="0.1">
       <button class="btn sm blue" style="flex:0 0 auto" onclick="savePct()">${t('save')}</button></div>
     <div class="total"><span>${t('my_share')} (${s.myPercent}%)</span><span>${money(s.myShare)}</span></div>
-    <div class="hint">${t('m_collect')} × ${s.myPercent}% — 표시만, 자동 청구 아님</div>
+    <div class="hint">${t('m_collect')} × ${s.myPercent}% — 표시만, 자동 청구 아님 · 10초마다 자동 갱신</div>
   </div>`;
+  if(ADMIN_TIMER) clearInterval(ADMIN_TIMER);
+  ADMIN_TIMER=setInterval(()=>{
+    if(STATE.tab!=='admin'){ clearInterval(ADMIN_TIMER); ADMIN_TIMER=null; return; }
+    if(document.activeElement && document.activeElement.id==='pct') return; // % 입력 중이면 건너뜀
+    viewAdmin(document.getElementById('main'), true);
+  },10000);
 }
 async function savePct(){
   await api('setSetting',{key:'my_percent',value:Number(document.getElementById('pct').value)||0});
