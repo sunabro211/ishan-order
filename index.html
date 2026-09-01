@@ -111,7 +111,8 @@ const I18N = {
     edit_price:'단가 수정', enter_paid:'받은 금액을 입력하세요', full:'전액',
     tab_pay:'입금확인', pay_wait:'입금대기', confirm_pay:'입금 확인', addr:'주소',
     bank_title:'입금 계좌 (고객 주문확인 메일에 표시)', bank_name:'은행', bank_account:'계좌번호',
-    bank_holder:'예금주', bank_hint:'고객 주문확인 메일에 이 계좌가 안내됩니다.'
+    bank_holder:'예금주', bank_hint:'고객 주문확인 메일에 이 계좌가 안내됩니다.',
+    stock:'재고', stock_ph:'비우면 무제한'
   },
   si:{
     tab_new:'නව ඇණවුම', tab_ready:'සූදානම', tab_deliver:'බෙදා/අයකර', tab_all:'සියලු ඇණවුම්',
@@ -127,7 +128,8 @@ const I18N = {
     edit_price:'මිල වෙනස් කරන්න', enter_paid:'මුදල ඇතුළත් කරන්න', full:'සම්පූර්ණ',
     tab_pay:'ගෙවීම් තහවුරු', pay_wait:'ගෙවීම බලාපොරොත්තුවෙන්', confirm_pay:'ගෙවීම තහවුරු කරන්න', addr:'ලිපිනය',
     bank_title:'බැංකු ගිණුම (ඇණවුම් ඊමේල් හි පෙන්වයි)', bank_name:'බැංකුව', bank_account:'ගිණුම් අංකය',
-    bank_holder:'ගිණුම් හිමිකරු', bank_hint:'පාරිභෝගික ඇණවුම් ඊමේල් හි මෙම ගිණුම පෙන්වයි.'
+    bank_holder:'ගිණුම් හිමිකරු', bank_hint:'පාරිභෝගික ඇණවුම් ඊමේල් හි මෙම ගිණුම පෙන්වයි.',
+    stock:'තොග', stock_ph:'හිස්නම් අසීමිත'
   }
 };
 let LANG = localStorage.getItem('oc_lang') || 'ko';
@@ -349,27 +351,41 @@ async function addCust(){
 }
 
 /* 품목 */
+function stockManaged(v){ return v!==''&&v!==null&&v!==undefined&&!isNaN(Number(v)); }
 function viewItem(){
-  const list=STATE.items.map(it=>`<div class="item" style="margin-bottom:8px">
+  const list=STATE.items.map(it=>{
+    const managed=stockManaged(it.stock);
+    const low=managed && Number(it.stock)<=5;
+    const stockTag=managed
+      ? `<span class="${low?'due-red':'due-ok'}">${t('stock')} ${Number(it.stock)}</span>`
+      : `<span class="meta">${t('stock')} ∞</span>`;
+    return `<div class="item" style="margin-bottom:8px">
     <div class="top"><div><div class="cust">${it.name}</div><div class="meta">${it.si||''}</div></div>
-      <span style="font-weight:700">${money(it.price)}</span></div>
-    <div class="row" style="margin-top:8px"><input type="number" id="pr_${it.id}" value="${it.price}">
-      <button class="btn sm blue" style="flex:0 0 auto" onclick="savePrice('${it.id}')">${t('edit_price')}</button></div>
-  </div>`).join('') || `<div class="empty">${t('empty')}</div>`;
+      <div style="text-align:right"><div style="font-weight:700">${money(it.price)}</div>${stockTag}</div></div>
+    <div class="row" style="margin-top:8px">
+      <div style="flex:1"><label style="margin:0 0 3px">${t('price')}</label><input type="number" id="pr_${it.id}" value="${it.price}"></div>
+      <div style="flex:1"><label style="margin:0 0 3px">${t('stock')}</label><input type="number" id="st_${it.id}" value="${managed?Number(it.stock):''}" placeholder="∞"></div>
+    </div>
+    <button class="btn sm blue" onclick="saveItem('${it.id}')">${t('save')}</button>
+  </div>`;
+  }).join('') || `<div class="empty">${t('empty')}</div>`;
   return `<div class="card"><h3>${t('add')}</h3>
     <label>${t('item')}</label><input id="iName">
     <label>${t('price')}</label><input type="number" id="iPrice">
+    <label>${t('stock')}</label><input type="number" id="iStock" placeholder="${t('stock_ph')}">
     <label>${t('item')} (සිංහල)</label><input id="iSi">
     <button class="btn" onclick="addItem2()">${t('add')}</button></div><div class="cards">${list}</div>`;
 }
 async function addItem2(){
   const name=document.getElementById('iName').value.trim(); if(!name) return toast(t('item'));
-  await api('addItem',{name,price:Number(document.getElementById('iPrice').value)||0,si:document.getElementById('iSi').value.trim()});
+  const sv=document.getElementById('iStock').value.trim();
+  await api('addItem',{name,price:Number(document.getElementById('iPrice').value)||0,si:document.getElementById('iSi').value.trim(),stock:sv===''?'':Number(sv)});
   toast(t('saved')); STATE.items=await api('listItems'); go('item');
 }
-async function savePrice(id){
-  await api('updateItem',{id,price:Number(document.getElementById('pr_'+id).value)||0});
-  toast(t('saved')); STATE.items=await api('listItems');
+async function saveItem(id){
+  const sv=document.getElementById('st_'+id).value.trim();
+  await api('updateItem',{id,price:Number(document.getElementById('pr_'+id).value)||0,stock:sv===''?'':Number(sv)});
+  toast(t('saved')); STATE.items=await api('listItems'); go('item');
 }
 
 /* 관리자 */
