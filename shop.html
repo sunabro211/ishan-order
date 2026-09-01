@@ -198,7 +198,7 @@ function shopView(){
     const nm = LANG==='si'&&it.si ? it.si : it.name;
     return `<div class="prod"><div class="nm"><b>${nm}</b><span>${money(it.price)}</span></div>
       <div class="qty"><button onclick="chg('${encodeURIComponent(it.name)}',${it.price},-1)">−</button>
-      <span id="q_${it.name.replace(/\W/g,'_')}">${q}</span>
+      <span id="q_${String(it.name||'').replace(/\W/g,'_')}">${q}</span>
       <button onclick="chg('${encodeURIComponent(it.name)}',${it.price},1)">＋</button></div></div>`;
   }).join('') || `<div class="empty">${t('empty_cat')}</div>`;
   const total=cartTotal();

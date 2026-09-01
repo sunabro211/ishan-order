@@ -1,5 +1,5 @@
 /* sw.js — 오프라인 캐시 + 설치 지원. (파일 바꾸면 아래 v 숫자만 올리세요) */
-const CACHE = "ik-order-v1";
+const CACHE = "ik-order-v2";
 const ASSETS = [
   "index.html", "shop.html", "pwa.js",
   "icon-192.png", "icon-512.png", "icon-maskable-512.png",
