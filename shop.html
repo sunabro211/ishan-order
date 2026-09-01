@@ -49,10 +49,17 @@
   .spin{width:38px;height:38px;border:4px solid #d1fae5;border-top-color:var(--green);border-radius:50%;animation:sp 1s linear infinite}
   @keyframes sp{to{transform:rotate(360deg)}}
 </style>
+<link rel="icon" href="favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#16a34a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>.hlogo{width:30px;height:30px;border-radius:50%;flex:0 0 auto;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.55)}</style>
 </head>
 <body>
 <header>
-  <div class="title" id="appName">주문하기</div>
+  <img src="logo.png" alt="" class="hlogo"><div class="title" id="appName">주문하기</div>
   <span class="hbtn" id="me" style="display:none"></span>
   <button class="hbtn" id="langBtn" onclick="toggleLang()">සිං</button>
   <button class="hbtn" id="logoutBtn" onclick="logout()" style="display:none">↩</button>
@@ -228,5 +235,6 @@ async function ordersView(m){
 
 boot();
 </script>
+<script src="pwa.js"></script>
 </body>
 </html>

@@ -75,10 +75,17 @@
     .cards .empty{grid-column:1/-1}
   }
 </style>
+<link rel="icon" href="favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#16a34a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>.hlogo{width:30px;height:30px;border-radius:50%;flex:0 0 auto;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.55)}</style>
 </head>
 <body>
 <header>
-  <div class="title" id="appName">주문·수금 관리</div>
+  <img src="logo.png" alt="" class="hlogo"><div class="title" id="appName">주문·수금 관리</div>
   <div class="who" id="who"></div>
   <button class="langbtn" id="langBtn" onclick="toggleLang()">සිං</button>
 </header>
@@ -436,5 +443,6 @@ async function saveBank(){
 if(!KEY){ document.getElementById('main').innerHTML='<div class="empty">접근 링크가 필요합니다. (?k=... )</div>'; }
 else init().catch(()=>{});
 </script>
+<script src="pwa.js"></script>
 </body>
 </html>
