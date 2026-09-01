@@ -119,7 +119,7 @@ const I18N = {
     tab_pay:'입금확인', pay_wait:'입금대기', confirm_pay:'입금 확인', addr:'주소',
     bank_title:'입금 계좌 (고객 주문확인 메일에 표시)', bank_name:'은행', bank_account:'계좌번호',
     bank_holder:'예금주', bank_hint:'고객 주문확인 메일에 이 계좌가 안내됩니다.',
-    stock:'재고', stock_ph:'비우면 무제한'
+    stock:'재고', stock_ph:'비우면 무제한', deposit_amt:'입금 금액', already_paid:'이미 입금', remaining:'미수금', collect_now:'이번에 받은 금액', delivery:'배달', pickup:'픽업', adjust:'금액 변경 · 배달비', goods_amt:'상품 금액', delivery_fee:'배달비', reason:'사유', reason_ph:'예: OO 품절 / OO 추가', apply:'금액 적용', refund:'환불 필요', category:'분류', cat_none:'분류 없음'
   },
   si:{
     tab_new:'නව ඇණවුම', tab_ready:'සූදානම', tab_deliver:'බෙදා/අයකර', tab_all:'සියලු ඇණවුම්',
@@ -136,7 +136,7 @@ const I18N = {
     tab_pay:'ගෙවීම් තහවුරු', pay_wait:'ගෙවීම බලාපොරොත්තුවෙන්', confirm_pay:'ගෙවීම තහවුරු කරන්න', addr:'ලිපිනය',
     bank_title:'බැංකු ගිණුම (ඇණවුම් ඊමේල් හි පෙන්වයි)', bank_name:'බැංකුව', bank_account:'ගිණුම් අංකය',
     bank_holder:'ගිණුම් හිමිකරු', bank_hint:'පාරිභෝගික ඇණවුම් ඊමේල් හි මෙම ගිණුම පෙන්වයි.',
-    stock:'තොග', stock_ph:'හිස්නම් අසීමිත'
+    stock:'තොග', stock_ph:'හිස්නම් අසීමිත', deposit_amt:'තැන්පත් මුදල', already_paid:'ලැබී ඇත', remaining:'හිඟ මුදල', collect_now:'දැන් ලැබුණු මුදල', delivery:'බෙදාහැරීම', pickup:'ලබාගැනීම', adjust:'මුදල වෙනස් · ගාස්තුව', goods_amt:'භාණ්ඩ මිල', delivery_fee:'බෙදාහැරීම් ගාස්තුව', reason:'හේතුව', reason_ph:'උදා: OO නැත / OO එකතු', apply:'යොදන්න', refund:'ආපසු ගෙවීම', category:'වර්ගය', cat_none:'වර්ගයක් නැත'
   }
 };
 let LANG = localStorage.getItem('oc_lang') || 'ko';
@@ -286,6 +286,14 @@ function viewList(filter){
 async function markReady(id){ await api('markReady',{id}); toast(t('saved')); go('ready'); }
 
 /* 입금확인 탭 (고객 온라인주문 → 이샨이 스샷 확인 후 입금확인) */
+function fulfillLine(o){
+  const isPickup=o.mode==='픽업';
+  const m=isPickup?t('pickup'):(o.mode?t('delivery'):'');
+  let h=''; if(m) h+=`<span class="badge ${isPickup?'b-ready':'b-done'}">${m}</span>`;
+  if(o.phone) h+=` <span class="meta">☎ ${o.phone}</span>`;
+  const addr=(!isPickup&&o.addr)?`<div class="meta">📍 ${o.addr}</div>`:'';
+  return (h||addr)?`<div style="margin:6px 0">${h}${addr}</div>`:'';
+}
 function viewPay(){
   const list=STATE.orders.filter(o=>o.status==='입금대기');
   if(!list.length) return `<div class="empty">${t('empty')}</div>`;
@@ -293,11 +301,19 @@ function viewPay(){
     <div class="top"><div><div class="cust">${o.customer} <span class="meta">#${o.custNo||''}</span></div>
       <div class="meta">${o.date} · ${o.id} · ${prodText(o)}</div></div>
       <span class="badge b-new">${t('pay_wait')}</span></div>
-    <div class="total" style="border:0;padding:0;margin:6px 0"><span></span><span>${money(o.amount)}</span></div>
+    ${fulfillLine(o)}
+    <div class="total" style="border:0;padding:0;margin:6px 0"><span>${t('total')}</span><span>${money(o.amount)}</span></div>
+    <label>${t('deposit_amt')}</label>
+    <div class="row"><input type="number" id="pay_${o.id}" value="${o.amount}">
+      <button class="btn sm grey" style="flex:0 0 auto" onclick="document.getElementById('pay_${o.id}').value=${o.amount}">${t('full')}</button></div>
     <button class="btn" onclick="doMarkPaid('${o.id}')">${t('confirm_pay')}</button>
   </div>`).join('')+'</div>';
 }
-async function doMarkPaid(id){ await api('markPaid',{id}); toast(t('saved')); go('pay'); }
+async function doMarkPaid(id){
+  const v=document.getElementById('pay_'+id).value;
+  if(v==='') return toast(t('enter_paid'));
+  await api('markPaid',{id,amount:Number(v)}); toast(t('saved')); go('pay');
+}
 
 /* 배달·수금 탭 (사장) */
 function viewDeliver(){
@@ -306,10 +322,20 @@ function viewDeliver(){
   let html='';
   if(ready.length){ html+='<div class="cards">'+ready.map(o=>`<div class="item">
     <div class="top"><div><div class="cust">${o.customer}</div><div class="meta">${o.date} · ${prodText(o)}</div></div>${badge(o)}</div>
+    ${fulfillLine(o)}
     <div class="total" style="border:0;padding:0;margin:6px 0"><span>${t('total')}</span><span>${money(o.amount)}</span></div>
-    <label>${t('paid')}</label>
-    <div class="row"><input type="number" id="pay_${o.id}" placeholder="${t('enter_paid')}" value="${o.amount}">
-      <button class="btn sm grey" style="flex:0 0 auto" onclick="document.getElementById('pay_${o.id}').value=${o.amount}">${t('full')}</button></div>
+    ${(o.fee>0||o.adjustReason)?`<div class="meta" style="margin:2px 0">${o.fee>0?t('delivery_fee')+' '+money(o.fee):''}${(o.fee>0&&o.adjustReason)?' · ':''}${o.adjustReason?t('reason')+': '+o.adjustReason:''}</div>`:''}
+    ${o.paid>0?`<div class="meta" style="margin:2px 0">${t('already_paid')} ${money(o.paid)} · ${o.due<0?('<b class=\"due-ok\">'+t('refund')+' '+money(-o.due)+'</b>'):(t('remaining')+' <b class=\"due-red\">'+money(o.due)+'</b>')}</div>`:''}
+    <div class="switch" style="text-align:left;margin:6px 0" onclick="toggleAdj('${o.id}')">✎ ${t('adjust')}</div>
+    <div id="adjWrap_${o.id}" style="display:none;border-top:1px dashed var(--line);padding-top:8px;margin-bottom:4px">
+      <label>${t('goods_amt')}</label><input type="number" id="adjAmt_${o.id}" value="${o.amount-(o.fee||0)}">
+      ${o.mode!=='픽업'?`<label>${t('delivery_fee')}</label><input type="number" id="adjFee_${o.id}" value="${o.fee||0}">`:`<input type="hidden" id="adjFee_${o.id}" value="0">`}
+      <label>${t('reason')}</label><input id="adjReason_${o.id}" placeholder="${t('reason_ph')}">
+      <button class="btn blue sm" style="margin-top:8px" onclick="doAdjust('${o.id}')">${t('apply')}</button>
+    </div>
+    <label>${t('collect_now')}</label>
+    <div class="row"><input type="number" id="pay_${o.id}" placeholder="${t('enter_paid')}" value="${o.due>0?o.due:0}">
+      <button class="btn sm grey" style="flex:0 0 auto" onclick="document.getElementById('pay_${o.id}').value=${o.due>0?o.due:0}">${t('full')}</button></div>
     <button class="btn" onclick="doDeliver('${o.id}')">${t('deliver')}</button>
   </div>`).join('')+'</div>'; }
   if(unpaid.length){ html+='<div class="card"><h3>'+t('due')+'</h3>'+unpaid.map(o=>`
@@ -329,6 +355,14 @@ async function doDeliver(id){
 async function doAddPay(id){
   const v=Number(document.getElementById('add_'+id).value); if(!v) return;
   await api('addPayment',{id,amount:v}); toast(t('saved')); go('deliver');
+}
+
+function toggleAdj(id){ const el=document.getElementById('adjWrap_'+id); if(el) el.style.display=(el.style.display==='none'?'block':'none'); }
+async function doAdjust(id){
+  const amt=Number(document.getElementById('adjAmt_'+id).value)||0;
+  const fee=Number(document.getElementById('adjFee_'+id).value)||0;
+  const reason=document.getElementById('adjReason_'+id).value.trim();
+  await api('adjustOrder',{id,amount:amt,fee,reason}); toast(t('saved')); go('deliver');
 }
 
 /* 전체주문 */
@@ -359,6 +393,8 @@ async function addCust(){
 
 /* 품목 */
 function stockManaged(v){ return v!==''&&v!==null&&v!==undefined&&!isNaN(Number(v)); }
+const CATS=[{ko:'향신료',si:'කුළුබඩු වර්ග',e:'🥣'},{ko:'병/캔류',si:'බෝතල් සහ ටින් වර්ග',e:'🍾'},{ko:'채소/과일',si:'එළවලු සහ පළතුරු',e:'🍎'},{ko:'건어물',si:'කරවල වර්ග',e:'🐟'},{ko:'비스킷류',si:'බිස්කට් වර්ග',e:'🍪'},{ko:'차/분유',si:'තේ කොල/කිරිපිටි',e:'☕'},{ko:'콩고기/면류',si:'සෝයා/ඉදිආප්ප/නූඩ්ල්ස්',e:'🍜'},{ko:'곡류/쌀',si:'සහල්/ධාන්‍ය වර්ග',e:'🌾'},{ko:'육류/생선',si:'මස් මාළු වර්ග',e:'🥩'},{ko:'초콜렛',si:'චොකලට් වර්ග',e:'🍫'},{ko:'마찬 음식',si:'මචං කෑම වර්ග',e:'🔔'},{ko:'로티/파라타/냉동식품',si:'රොටී/පරාටා සහ ශීතකල ආහාර',e:'❄️'},{ko:'기타',si:'වෙනත්',e:'📦'}];
+function catOptions(sel){ return '<option value="">'+t('cat_none')+'</option>'+CATS.map(c=>`<option value="${c.ko}" ${c.ko===sel?'selected':''}>${c.e} ${c.ko}</option>`).join(''); }
 function viewItem(){
   const list=STATE.items.map(it=>{
     const managed=stockManaged(it.stock);
@@ -367,8 +403,10 @@ function viewItem(){
       ? `<span class="${low?'due-red':'due-ok'}">${t('stock')} ${Number(it.stock)}</span>`
       : `<span class="meta">${t('stock')} ∞</span>`;
     return `<div class="item" style="margin-bottom:8px">
-    <div class="top"><div><div class="cust">${it.name}</div><div class="meta">${it.si||''}</div></div>
+    <div class="top"><div><div class="cust">${it.name}</div><div class="meta">${it.si||''}${it.cat?(' · '+(CATS.find(c=>c.ko===it.cat)||{e:''}).e+' '+it.cat):''}</div></div>
       <div style="text-align:right"><div style="font-weight:700">${money(it.price)}</div>${stockTag}</div></div>
+    <label style="margin:6px 0 3px">${t('category')}</label>
+    <select id="ct_${it.id}">${catOptions(it.cat||'')}</select>
     <div class="row" style="margin-top:8px">
       <div style="flex:1"><label style="margin:0 0 3px">${t('price')}</label><input type="number" id="pr_${it.id}" value="${it.price}"></div>
       <div style="flex:1"><label style="margin:0 0 3px">${t('stock')}</label><input type="number" id="st_${it.id}" value="${managed?Number(it.stock):''}" placeholder="∞"></div>
@@ -381,17 +419,18 @@ function viewItem(){
     <label>${t('price')}</label><input type="number" id="iPrice">
     <label>${t('stock')}</label><input type="number" id="iStock" placeholder="${t('stock_ph')}">
     <label>${t('item')} (සිංහල)</label><input id="iSi">
+    <label>${t('category')}</label><select id="iCat">${catOptions('')}</select>
     <button class="btn" onclick="addItem2()">${t('add')}</button></div><div class="cards">${list}</div>`;
 }
 async function addItem2(){
   const name=document.getElementById('iName').value.trim(); if(!name) return toast(t('item'));
   const sv=document.getElementById('iStock').value.trim();
-  await api('addItem',{name,price:Number(document.getElementById('iPrice').value)||0,si:document.getElementById('iSi').value.trim(),stock:sv===''?'':Number(sv)});
+  await api('addItem',{name,price:Number(document.getElementById('iPrice').value)||0,si:document.getElementById('iSi').value.trim(),stock:sv===''?'':Number(sv),cat:document.getElementById('iCat').value});
   toast(t('saved')); STATE.items=await api('listItems'); go('item');
 }
 async function saveItem(id){
   const sv=document.getElementById('st_'+id).value.trim();
-  await api('updateItem',{id,price:Number(document.getElementById('pr_'+id).value)||0,stock:sv===''?'':Number(sv)});
+  await api('updateItem',{id,price:Number(document.getElementById('pr_'+id).value)||0,stock:sv===''?'':Number(sv),cat:document.getElementById('ct_'+id).value});
   toast(t('saved')); STATE.items=await api('listItems'); go('item');
 }
 

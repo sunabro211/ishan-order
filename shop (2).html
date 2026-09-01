@@ -85,7 +85,7 @@ const I18N = {
        st_wait:'입금대기', st_go:'진행중', st_done:'배달완료',
        order_ok:'주문 완료! 확인 메일을 보냈어요', order_ok2:'메일의 계좌로 입금 후, 이샨에게 입금 스크린샷과 주문번호를 보내주세요.',
        signup_ok:'회원가입 완료! 고객번호', need_id:'이메일/전화번호와 비밀번호를 입력하세요',
-       won:'원' },
+       won:'원', mode_title:'받는 방법', m_delivery:'배달', m_pickup:'픽업', all:'전체', empty_cat:'이 분류에 상품이 없어요' },
   si:{ login:'පිවිසෙන්න', signup:'ලියාපදිංචිය', id_ph:'ඊමේල් හෝ දුරකථනය', pw:'මුරපදය',
        email:'ඊමේල්', name:'නම', phone:'දුරකථනය', addr:'ලිපිනය',
        to_signup:'මුල් වරද? ලියාපදිංචි වන්න', to_login:'දැනටමත් ගිණුමක් තිබේ · පිවිසෙන්න',
@@ -95,14 +95,15 @@ const I18N = {
        st_wait:'ගෙවීම බලාපොරොත්තුවෙන්', st_go:'ක්‍රියාත්මකයි', st_done:'බෙදා හරින ලදී',
        order_ok:'ඇණවුම සම්පූර්ණයි! ඊමේල් එකක් යවන ලදී', order_ok2:'ඊමේල් හි ගිණුමට ගෙවා, ඉෂාන්ට රිසිට්පත සහ ඇණවුම් අංකය එවන්න.',
        signup_ok:'ලියාපදිංචිය සම්පූර්ණයි! අංකය', need_id:'ඊමේල්/දුරකථනය සහ මුරපදය ඇතුළත් කරන්න',
-       won:'' }
+       won:'', mode_title:'ලබාගැනීමේ ක්‍රමය', m_delivery:'බෙදාහැරීම', m_pickup:'ලබාගැනීම', all:'සියල්ල', empty_cat:'මෙම වර්ගයේ භාණ්ඩ නැත' }
 };
 let LANG = localStorage.getItem('shop_lang') || 'ko';
 function t(k){ return (I18N[LANG]&&I18N[LANG][k]) || I18N.ko[k] || k; }
 
 let ME = null;             // {no, name}
 let ITEMS = [], CART = {}, CFG = {cur:'₩'};
-let AUTHMODE = 'login', TAB = 'shop';
+let AUTHMODE = 'login', TAB = 'shop', MODE = '배달', CAT = '';
+const CATS=[{ko:'향신료',si:'කුළුබඩු වර්ග',e:'🥣'},{ko:'병/캔류',si:'බෝතල් සහ ටින් වර්ග',e:'🍾'},{ko:'채소/과일',si:'එළවලු සහ පළතුරු',e:'🍎'},{ko:'건어물',si:'කරවල වර්ග',e:'🐟'},{ko:'비스킷류',si:'බිස්කට් වර්ග',e:'🍪'},{ko:'차/분유',si:'තේ කොල/කිරිපිටි',e:'☕'},{ko:'콩고기/면류',si:'සෝයා/ඉදිආප්ප/නූඩ්ල්ස්',e:'🍜'},{ko:'곡류/쌀',si:'සහල්/ධාන්‍ය වර්ග',e:'🌾'},{ko:'육류/생선',si:'මස් මාළු වර්ග',e:'🥩'},{ko:'초콜렛',si:'චොකලට් වර්ග',e:'🍫'},{ko:'마찬 음식',si:'මචං කෑම වර්ග',e:'🔔'},{ko:'로티/파라타/냉동식품',si:'රොටී/පරාටා සහ ශීතකල ආහාර',e:'❄️'},{ko:'기타',si:'වෙනත්',e:'📦'}];
 
 function loading(on){ document.getElementById('loading').style.display=on?'flex':'none'; }
 function toast(m){ const e=document.getElementById('toast'); e.textContent=m; e.classList.add('show'); setTimeout(()=>e.classList.remove('show'),2600); }
@@ -190,16 +191,25 @@ function buildNav(){
 
 /* ── 상점 + 장바구니 ── */
 function shopView(){
-  const rows=ITEMS.map(it=>{
+  const cats=CATS.filter(c=> ITEMS.some(it=> (it.cat||'기타')===c.ko ));
+  const shown=(CAT==='')?ITEMS:ITEMS.filter(it=>(it.cat||'기타')===CAT);
+  const rows=shown.map(it=>{
     const q=CART[it.name]?CART[it.name].qty:0;
     const nm = LANG==='si'&&it.si ? it.si : it.name;
     return `<div class="prod"><div class="nm"><b>${nm}</b><span>${money(it.price)}</span></div>
       <div class="qty"><button onclick="chg('${encodeURIComponent(it.name)}',${it.price},-1)">−</button>
       <span id="q_${it.name.replace(/\W/g,'_')}">${q}</span>
       <button onclick="chg('${encodeURIComponent(it.name)}',${it.price},1)">＋</button></div></div>`;
-  }).join('') || `<div class="empty">${t('empty_cart')}</div>`;
+  }).join('') || `<div class="empty">${t('empty_cat')}</div>`;
   const total=cartTotal();
-  return rows + `<div class="cartbar">
+  const mb=(on)=>`flex:1;border:1px solid var(--line);background:${on?'var(--green)':'#fff'};color:${on?'#fff':'var(--muted)'};padding:9px;border-radius:20px;font-size:14px;font-weight:600`;
+  const chip=(a,label,val)=>`<button onclick="setCat('${val}')" style="flex:0 0 auto;border:1px solid var(--line);background:${a?'var(--green)':'#fff'};color:${a?'#fff':'var(--muted)'};padding:7px 13px;border-radius:20px;font-size:14px;font-weight:600;white-space:nowrap">${label}</button>`;
+  const chips=`<div style="display:flex;gap:7px;overflow-x:auto;padding:2px 2px 10px">`+chip(CAT==='',t('all'),'')+cats.map(c=>chip(CAT===c.ko,c.e+' '+(LANG==='si'?c.si:c.ko),c.ko)).join('')+`</div>`;
+  const modeBar=`<div class="card" style="display:flex;gap:8px;align-items:center;padding:10px 12px;margin-bottom:12px">
+    <span style="font-size:13px;color:var(--muted);flex:0 0 auto">${t('mode_title')}</span>
+    <button style="${mb(MODE==='배달')}" onclick="setMode('배달')">${t('m_delivery')}</button>
+    <button style="${mb(MODE==='픽업')}" onclick="setMode('픽업')">${t('m_pickup')}</button></div>`;
+  return modeBar + chips + rows + `<div class="cartbar">
     <div class="sum"><b>${money(total)}</b><span>${t('cart')}</span></div>
     <button class="btn sm" style="flex:0 0 auto" onclick="placeOrder()">${t('order_now')}</button></div>`;
 }
@@ -209,11 +219,13 @@ function chg(encName,price,d){
   if(q===0) delete CART[name]; else CART[name]={price,qty:q};
   render();
 }
+function setMode(x){ MODE=x; render(); }
+function setCat(x){ CAT=x; render(); }
 function cartTotal(){ let s=0; for(const k in CART)s+=CART[k].price*CART[k].qty; return s; }
 async function placeOrder(){
   const lines=Object.keys(CART).map(name=>({name,price:CART[name].price,qty:CART[name].qty}));
   if(!lines.length) return toast(t('empty_cart'));
-  await api('placeOrder',{no:ME.no,lines});
+  await api('placeOrder',{no:ME.no,lines,mode:MODE});
   CART={}; toast(t('order_ok'));
   setTimeout(()=>toast(t('order_ok2')),2700);
   TAB='orders'; render();
@@ -228,7 +240,8 @@ async function ordersView(m){
     if(o.status==='입금대기') b='<span class="badge b-wait">'+t('st_wait')+'</span>';
     else if(o.status==='배달완료') b='<span class="badge b-done">'+t('st_done')+'</span>';
     const items=(o.lines||[]).map(l=>l.name+' ×'+l.qty).join(', ');
-    return `<div class="order"><div class="top"><div><b>${o.id}</b><div style="font-size:13px;color:var(--muted)">${o.date} · ${items}</div></div>${b}</div>
+    const md=o.mode==='픽업'?t('m_pickup'):(o.mode?t('m_delivery'):'');
+    return `<div class="order"><div class="top"><div><b>${o.id}</b><div style="font-size:13px;color:var(--muted)">${o.date}${md?' · '+md:''} · ${items}</div></div>${b}</div>
       <div style="text-align:right;font-weight:700;margin-top:6px">${money(o.amount)}</div></div>`;
   }).join('');
 }
