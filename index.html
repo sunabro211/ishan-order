@@ -125,6 +125,29 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
+<style>
+  @property --p{syntax:'<number>';inherits:false;initial-value:0}
+  .dash-hero{background:linear-gradient(160deg,rgba(129,140,248,.18),rgba(34,211,238,.05) 60%,transparent),var(--glass);position:relative;overflow:hidden}
+  .dash-date{font-family:var(--mono);font-size:12px;color:var(--cyan);letter-spacing:1px}
+  .gaugewrap{display:flex;align-items:center;gap:18px;margin:16px 0 4px}
+  .gauge{--p:0;width:116px;height:116px;flex:none;border-radius:50%;position:relative;
+    background:conic-gradient(from -90deg,var(--cyan),var(--indigo) calc(var(--p) * 0.6 * 1%),var(--magenta) calc(var(--p) * 1%),rgba(255,255,255,.06) calc(var(--p) * 1%));
+    filter:drop-shadow(0 0 14px rgba(129,140,248,.4))}
+  .gauge::before{content:"";position:absolute;inset:11px;border-radius:50%;background:var(--bg2)}
+  .gauge .gval{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+  .gauge .gval b{font-family:var(--mono);font-size:25px;color:#fff;display:block;line-height:1}
+  .gauge .gval span{font-size:11px;color:var(--muted)}
+  .dmoney{flex:1;min-width:0}
+  .dmoney .dbig{font-family:var(--mono);font-size:23px;font-weight:700;letter-spacing:-.5px;word-break:break-all}
+  .kpi3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:14px}
+  .kbox{border:1px solid var(--line);border-radius:14px;padding:12px;background:rgba(255,255,255,.03)}
+  .kbox .n{font-family:var(--mono);font-size:20px;font-weight:700}
+  .kbox .l{font-size:11px;color:var(--muted);margin-top:3px}
+  .rankrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+  .rankrow:last-child{border-bottom:0}
+  .rankrow .due-red{font-family:var(--mono);font-weight:700}
+  @media (prefers-reduced-motion:no-preference){.gauge{animation:gsweep 1s cubic-bezier(.3,.8,.2,1) both}@keyframes gsweep{from{--p:0}}}
+</style>
 </head>
 <body>
 <header>
@@ -150,6 +173,7 @@ const I18N = {
   ko:{
     tab_new:'주문신청', tab_ready:'준비', tab_deliver:'배달·수금', tab_all:'전체주문',
     tab_cust:'고객', tab_item:'품목', tab_admin:'관리자',
+    tab_home:'홈', dash_title:'한눈에 보기', collect_rate:'수금률', due_customers:'미수금 고객', k_today_order:'오늘 주문', top_due:'미수금 상위 고객', recent_orders:'최근 주문', none_due:'미수금 없어요 👍',
     pick_cust:'고객 선택', add_line:'＋ 품목 추가', item:'품목', qty:'수량', price:'단가',
     total:'합계', save_order:'주문 등록', order_date:'주문일자', memo:'메모(선택)',
     st_new:'신청', st_ready:'준비완료', st_done:'배달완료',
@@ -167,6 +191,7 @@ const I18N = {
   si:{
     tab_new:'නව ඇණවුම', tab_ready:'සූදානම', tab_deliver:'බෙදා/අයකර', tab_all:'සියලු ඇණවුම්',
     tab_cust:'පාරිභෝගිකයන්', tab_item:'භාණ්ඩ', tab_admin:'පරිපාලක',
+    tab_home:'මුල් පිටුව', dash_title:'සාරාංශය', collect_rate:'අයකිරීම් අනුපාතය', due_customers:'හිඟ ගනුදෙනුකරුවෝ', k_today_order:'අද ඇණවුම්', top_due:'වැඩිම හිඟ මුදල්', recent_orders:'නවතම ඇණවුම්', none_due:'හිඟ මුදල් නැත 👍',
     pick_cust:'පාරිභෝගිකයා තෝරන්න', add_line:'＋ භාණ්ඩයක් එක් කරන්න', item:'භාණ්ඩය', qty:'ප්‍රමාණය', price:'ඒකක මිල',
     total:'එකතුව', save_order:'ඇණවුම සුරකින්න', order_date:'ඇණවුම් දිනය', memo:'සටහන (විකල්ප)',
     st_new:'නව', st_ready:'සූදානම්', st_done:'බෙදා හරින ලදී',
@@ -186,9 +211,9 @@ let LANG = localStorage.getItem('oc_lang') || 'ko';
 function t(k){ return (I18N[LANG] && I18N[LANG][k]) || I18N.ko[k] || k; }
 
 const TABS = {
-  boss:  ['new','pay','deliver','all','cust'],
-  vice:  ['ready','pay','deliver','all','cust','item'],
-  admin: ['new','pay','ready','deliver','all','cust','item','admin']
+  boss:  ['home','new','pay','deliver','all','cust'],
+  vice:  ['home','ready','pay','deliver','all','cust','item'],
+  admin: ['home','new','pay','ready','deliver','all','cust','item','admin']
 };
 
 let STATE = { role:'', name:'', cur:'₩', items:[], customers:[], orders:[], tab:'' };
@@ -226,7 +251,7 @@ async function init(){
 function buildNav(){
   const tabs = TABS[STATE.role]||['all'];
   const nav = document.getElementById('nav'); nav.innerHTML='';
-  const lbl = {new:'tab_new',ready:'tab_ready',pay:'tab_pay',deliver:'tab_deliver',all:'tab_all',cust:'tab_cust',item:'tab_item',admin:'tab_admin'};
+  const lbl = {home:'tab_home',new:'tab_new',ready:'tab_ready',pay:'tab_pay',deliver:'tab_deliver',all:'tab_all',cust:'tab_cust',item:'tab_item',admin:'tab_admin'};
   tabs.forEach(tb=>{
     const b=document.createElement('button');
     b.textContent=t(lbl[tb]); b.dataset.tab=tb; b.onclick=()=>go(tb);
@@ -235,8 +260,8 @@ function buildNav(){
 }
 async function go(tab){
   STATE.tab=tab; buildNav();
-  if(['ready','deliver','all','pay'].includes(tab) || tab==='admin'){ STATE.orders = await api('listOrders'); }
-  if(['cust','deliver','new','all'].includes(tab)){ STATE.customers = await api('listCustomers'); }
+  if(['home','ready','deliver','all','pay'].includes(tab) || tab==='admin'){ STATE.orders = await api('listOrders'); }
+  if(['home','cust','deliver','new','all'].includes(tab)){ STATE.customers = await api('listCustomers'); }
   render();
 }
 function toggleLang(){ LANG = LANG==='ko'?'si':'ko'; localStorage.setItem('oc_lang',LANG);
@@ -249,6 +274,7 @@ function render(){
   const m=document.getElementById('main');
   if(ADMIN_TIMER){ clearInterval(ADMIN_TIMER); ADMIN_TIMER=null; }
   switch(STATE.tab){
+    case 'home':    m.innerHTML=viewHome(); break;
     case 'new':     m.innerHTML=viewNew(); bindNew(); break;
     case 'ready':   m.innerHTML=viewList(o=>o.status==='신청'); break;
     case 'pay':     m.innerHTML=viewPay(); break;
@@ -258,6 +284,44 @@ function render(){
     case 'item':    m.innerHTML=viewItem(); break;
     case 'admin':   viewAdmin(m); break;
   }
+}
+function viewHome(){
+  const orders=STATE.orders||[], custs=STATE.customers||[];
+  const today=new Date().toISOString().slice(0,10);
+  const todayOrders=orders.filter(o=>String(o.date||'').slice(0,10)===today).length;
+  const readyCnt=orders.filter(o=>o.status==='준비완료').length;
+  const waitCnt=orders.filter(o=>o.status==='입금대기').length;
+  let billed=0,paid=0; orders.forEach(o=>{billed+=Number(o.amount||0);paid+=Number(o.paid||0);});
+  const rate=billed>0?Math.round(paid/billed*100):0;
+  const totalDue=custs.reduce((x,c)=>x+Number(c.due||0),0);
+  const dueCusts=custs.filter(c=>Number(c.due||0)>0).sort((a,b)=>Number(b.due)-Number(a.due));
+  const recent=[...orders].reverse().slice(0,4);
+  const topList=dueCusts.slice(0,5).map(c=>`<div class="rankrow">
+      <div><div class="cust">${c.name} <span class="meta">#${c.no||''}</span></div><div class="meta">${c.phone||''}</div></div>
+      <span class="due-red">${money(c.due)}</span></div>`).join('') || `<div class="empty">${t('none_due')}</div>`;
+  const recentList=recent.map(o=>`<div class="rankrow">
+      <div><div class="cust">${o.customer}</div><div class="meta">${o.date||''}</div></div>
+      <div style="text-align:right"><div style="font-family:var(--mono)">${money(o.amount)}</div>${badge(o)}</div></div>`).join('') || `<div class="empty">${t('empty')}</div>`;
+  return `
+  <div class="dash-hero card">
+    <div class="dash-date">${today.replace(/-/g,' · ')}</div>
+    <h3 style="margin:2px 0 0">${t('dash_title')}</h3>
+    <div class="gaugewrap">
+      <div class="gauge" style="--p:${rate}"><div class="gval"><b>${rate}%</b><span>${t('collect_rate')}</span></div></div>
+      <div class="dmoney">
+        <div class="dbig due-red">${money(totalDue)}</div>
+        <div class="meta">${t('total_due')}</div>
+        <div class="meta" style="margin-top:6px">${t('due_customers')} · <b>${dueCusts.length}</b></div>
+      </div>
+    </div>
+    <div class="kpi3">
+      <div class="kbox"><div class="n">${todayOrders}</div><div class="l">${t('k_today_order')}</div></div>
+      <div class="kbox"><div class="n" style="color:var(--indigo)">${readyCnt}</div><div class="l">${t('st_ready')}</div></div>
+      <div class="kbox"><div class="n" style="color:var(--cyan)">${waitCnt}</div><div class="l">${t('pay_wait')}</div></div>
+    </div>
+  </div>
+  <div class="card"><h3>${t('top_due')}</h3>${topList}</div>
+  <div class="card"><h3>${t('recent_orders')}</h3>${recentList}</div>`;
 }
 function badge(o){
   if(o.status==='신청') return '<span class="badge b-new">'+t('st_new')+'</span>';
