@@ -174,6 +174,7 @@ const I18N = {
     tab_new:'주문신청', tab_ready:'준비', tab_deliver:'배달·수금', tab_all:'전체주문',
     tab_cust:'고객', tab_item:'품목', tab_admin:'관리자',
     tab_home:'홈', dash_title:'한눈에 보기', collect_rate:'수금률', due_customers:'미수금 고객', k_today_order:'오늘 주문', top_due:'미수금 상위 고객', recent_orders:'최근 주문', none_due:'미수금 없어요 👍',
+    tab_statement:'명세', st_search:'이름 또는 전화번호 검색', st_pick:'위에서 고객을 선택하세요', st_copy:'명세서 보내기 / 복사', st_copied:'명세서가 복사됐어요', st_no_orders:'주문 내역이 없어요', st_asof:'기준일',
     pick_cust:'고객 선택', add_line:'＋ 품목 추가', item:'품목', qty:'수량', price:'단가',
     total:'합계', save_order:'주문 등록', order_date:'주문일자', memo:'메모(선택)',
     st_new:'신청', st_ready:'준비완료', st_done:'배달완료',
@@ -192,6 +193,7 @@ const I18N = {
     tab_new:'නව ඇණවුම', tab_ready:'සූදානම', tab_deliver:'බෙදා/අයකර', tab_all:'සියලු ඇණවුම්',
     tab_cust:'පාරිභෝගිකයන්', tab_item:'භාණ්ඩ', tab_admin:'පරිපාලක',
     tab_home:'මුල් පිටුව', dash_title:'සාරාංශය', collect_rate:'අයකිරීම් අනුපාතය', due_customers:'හිඟ ගනුදෙනුකරුවෝ', k_today_order:'අද ඇණවුම්', top_due:'වැඩිම හිඟ මුදල්', recent_orders:'නවතම ඇණවුම්', none_due:'හිඟ මුදල් නැත 👍',
+    tab_statement:'ප්‍රකාශය', st_search:'නම හෝ දුරකථනය සොයන්න', st_pick:'ඉහළින් පාරිභෝගිකයෙක් තෝරන්න', st_copy:'ප්‍රකාශය යවන්න / පිටපත්', st_copied:'පිටපත් විය', st_no_orders:'ඇණවුම් නැත', st_asof:'දිනය',
     pick_cust:'පාරිභෝගිකයා තෝරන්න', add_line:'＋ භාණ්ඩයක් එක් කරන්න', item:'භාණ්ඩය', qty:'ප්‍රමාණය', price:'ඒකක මිල',
     total:'එකතුව', save_order:'ඇණවුම සුරකින්න', order_date:'ඇණවුම් දිනය', memo:'සටහන (විකල්ප)',
     st_new:'නව', st_ready:'සූදානම්', st_done:'බෙදා හරින ලදී',
@@ -211,9 +213,9 @@ let LANG = localStorage.getItem('oc_lang') || 'ko';
 function t(k){ return (I18N[LANG] && I18N[LANG][k]) || I18N.ko[k] || k; }
 
 const TABS = {
-  boss:  ['home','new','pay','deliver','all','cust'],
-  vice:  ['home','ready','pay','deliver','all','cust','item'],
-  admin: ['home','new','pay','ready','deliver','all','cust','item','admin']
+  boss:  ['home','new','pay','deliver','statement','all','cust'],
+  vice:  ['home','ready','pay','deliver','statement','all','cust','item'],
+  admin: ['home','new','pay','ready','deliver','statement','all','cust','item','admin']
 };
 
 let STATE = { role:'', name:'', cur:'₩', items:[], customers:[], orders:[], tab:'' };
@@ -233,6 +235,7 @@ async function api(action, params={}, silent){
   finally{ if(!silent) loading(false); }
 }
 let ADMIN_TIMER=null;
+let ST_SEL=null, ST_SEL_NO=null, ST_Q='';
 function money(n){ return STATE.cur + Number(n||0).toLocaleString(); }
 
 /* ── 초기화 ─────────────────────────── */
@@ -251,7 +254,7 @@ async function init(){
 function buildNav(){
   const tabs = TABS[STATE.role]||['all'];
   const nav = document.getElementById('nav'); nav.innerHTML='';
-  const lbl = {home:'tab_home',new:'tab_new',ready:'tab_ready',pay:'tab_pay',deliver:'tab_deliver',all:'tab_all',cust:'tab_cust',item:'tab_item',admin:'tab_admin'};
+  const lbl = {home:'tab_home',new:'tab_new',ready:'tab_ready',pay:'tab_pay',deliver:'tab_deliver',statement:'tab_statement',all:'tab_all',cust:'tab_cust',item:'tab_item',admin:'tab_admin'};
   tabs.forEach(tb=>{
     const b=document.createElement('button');
     b.textContent=t(lbl[tb]); b.dataset.tab=tb; b.onclick=()=>go(tb);
@@ -260,8 +263,8 @@ function buildNav(){
 }
 async function go(tab){
   STATE.tab=tab; buildNav();
-  if(['home','ready','deliver','all','pay'].includes(tab) || tab==='admin'){ STATE.orders = await api('listOrders'); }
-  if(['home','cust','deliver','new','all'].includes(tab)){ STATE.customers = await api('listCustomers'); }
+  if(['home','ready','deliver','all','pay','statement'].includes(tab) || tab==='admin'){ STATE.orders = await api('listOrders'); }
+  if(['home','cust','deliver','new','all','statement'].includes(tab)){ STATE.customers = await api('listCustomers'); }
   render();
 }
 function toggleLang(){ LANG = LANG==='ko'?'si':'ko'; localStorage.setItem('oc_lang',LANG);
@@ -275,6 +278,7 @@ function render(){
   if(ADMIN_TIMER){ clearInterval(ADMIN_TIMER); ADMIN_TIMER=null; }
   switch(STATE.tab){
     case 'home':    m.innerHTML=viewHome(); break;
+    case 'statement': m.innerHTML=viewStatement(); break;
     case 'new':     m.innerHTML=viewNew(); bindNew(); break;
     case 'ready':   m.innerHTML=viewList(o=>o.status==='신청'); break;
     case 'pay':     m.innerHTML=viewPay(); break;
@@ -284,6 +288,118 @@ function render(){
     case 'item':    m.innerHTML=viewItem(); break;
     case 'admin':   viewAdmin(m); break;
   }
+}
+/* 고객별 월별 명세 */
+function viewStatement(){
+  const q=(ST_Q||'').trim().toLowerCase();
+  const list=q?STATE.customers.filter(c=>(c.name||'').toLowerCase().includes(q)||String(c.phone||'').includes(q)):STATE.customers;
+  const picker=`<div class="card"><h3>${t('tab_statement')}</h3>
+    <input id="stQ" placeholder="${t('st_search')}" value="${(ST_Q||'').replace(/"/g,'&quot;')}" oninput="ST_Q=this.value;renderStPicker()">
+    <div id="stPick" style="margin-top:8px">${stPickHTML(list)}</div></div>`;
+  return picker + (ST_SEL?stBodyHTML():`<div class="empty">${t('st_pick')}</div>`);
+}
+function stPickHTML(list){
+  if(!list.length) return `<div class="empty" style="padding:14px">${t('empty')}</div>`;
+  return list.slice(0,12).map(c=>`<div class="rankrow" style="cursor:pointer" onclick="selectSt('${c.no}')">
+    <div><div class="cust">${c.name} <span class="meta">#${c.no||''}</span></div><div class="meta">${c.phone||''}</div></div>
+    <span class="${Number(c.due)>0?'due-red':'due-ok'}" style="font-family:var(--mono);font-weight:700">${money(c.due)}</span></div>`).join('');
+}
+function renderStPicker(){
+  const q=(ST_Q||'').trim().toLowerCase();
+  const list=q?STATE.customers.filter(c=>(c.name||'').toLowerCase().includes(q)||String(c.phone||'').includes(q)):STATE.customers;
+  const el=document.getElementById('stPick'); if(el) el.innerHTML=stPickHTML(list);
+}
+function selectSt(no){
+  const c=STATE.customers.find(x=>String(x.no)===String(no));
+  if(c){ ST_SEL=c.name; ST_SEL_NO=c.no; } render();
+}
+function stCustOrders(){
+  return STATE.orders.filter(o=>o.customer===ST_SEL && (o.custNo==null||o.custNo===''||String(o.custNo)===String(ST_SEL_NO)));
+}
+function stBodyHTML(){
+  const cust=STATE.customers.find(c=>String(c.no)===String(ST_SEL_NO)) || STATE.customers.find(c=>c.name===ST_SEL);
+  if(!cust) return '';
+  const orders=stCustOrders();
+  const today=new Date().toISOString().slice(0,10);
+  const months={}; orders.forEach(o=>{ const mk=String(o.date||'').slice(0,7)||'—'; (months[mk]=months[mk]||[]).push(o); });
+  const mkeys=Object.keys(months).sort().reverse();
+  const monthsHTML=mkeys.length?mkeys.map(mk=>{
+    const rows=months[mk].sort((a,b)=>String(b.date).localeCompare(String(a.date))).map(stOrderRow).join('');
+    return `<div class="card"><h3>${mk}</h3>${rows}</div>`;
+  }).join(''):`<div class="empty">${t('st_no_orders')}</div>`;
+  return `
+    <div class="card dash-hero">
+      <div class="cust" style="font-size:17px">${cust.name} <span class="meta">#${cust.no||''}</span></div>
+      <div class="meta">${cust.phone||''}${cust.addr?' · '+cust.addr:''}</div>
+      <div class="dbig due-red" style="margin-top:10px">${money(cust.due)}</div>
+      <div class="meta">${t('total_due')} · ${t('st_asof')} ${today}</div>
+      <button class="btn" style="margin-top:12px" onclick="sendStatement()">📄 ${t('st_copy')}</button>
+    </div>${monthsHTML}`;
+}
+function stOrderRow(o){
+  const due=Number(o.due||0);
+  return `<div style="padding:11px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+    <div style="display:flex;justify-content:space-between;gap:8px">
+      <div style="min-width:0"><div style="font-weight:600">${String(o.date||'').slice(5)}</div><div class="meta">${prodText(o)}</div></div>
+      <div style="text-align:right;flex:0 0 auto"><div style="font-family:var(--mono)">${money(o.amount)}</div>
+        <div class="meta">${t('paid')} ${money(o.paid)}</div>
+        <div class="${due>0?'due-red':'due-ok'}" style="font-family:var(--mono);font-weight:700">${t('due')} ${money(due)}</div></div>
+    </div>
+    <div class="switch" style="text-align:left;margin-top:6px" onclick="toggleStEdit('${o.id}')">✎ ${t('add_pay')} · ${t('adjust')}</div>
+    <div id="stE_${o.id}" style="display:none;border-top:1px dashed var(--line);padding-top:8px;margin-top:6px">
+      <label>${t('add_pay')}</label>
+      <div class="row"><input type="number" id="stPay_${o.id}" placeholder="${t('enter_paid')}">
+        <button class="btn sm blue" style="flex:0 0 auto" onclick="doStPay('${o.id}')">${t('add_pay')}</button></div>
+      <label style="margin-top:10px">${t('goods_amt')}</label><input type="number" id="stAmt_${o.id}" value="${o.amount-(o.fee||0)}">
+      ${o.mode!=='픽업'?`<label>${t('delivery_fee')}</label><input type="number" id="stFee_${o.id}" value="${o.fee||0}">`:`<input type="hidden" id="stFee_${o.id}" value="0">`}
+      <label>${t('reason')}</label><input id="stReason_${o.id}" placeholder="${t('reason_ph')}">
+      <button class="btn blue sm" style="margin-top:8px" onclick="doStAdjust('${o.id}')">${t('apply')}</button>
+    </div>
+  </div>`;
+}
+function toggleStEdit(id){ const el=document.getElementById('stE_'+id); if(el) el.style.display=(el.style.display==='none'?'block':'none'); }
+async function doStPay(id){
+  const v=document.getElementById('stPay_'+id).value; if(v==='') return toast(t('enter_paid'));
+  await api('addPayment',{id,amount:Number(v)}); toast(t('saved')); go('statement');
+}
+async function doStAdjust(id){
+  const amt=Number(document.getElementById('stAmt_'+id).value)||0;
+  const fee=Number(document.getElementById('stFee_'+id).value)||0;
+  const reason=document.getElementById('stReason_'+id).value.trim();
+  await api('adjustOrder',{id,amount:amt,fee,reason}); toast(t('saved')); go('statement');
+}
+function statementText(){
+  const cust=STATE.customers.find(c=>String(c.no)===String(ST_SEL_NO)) || STATE.customers.find(c=>c.name===ST_SEL);
+  if(!cust) return '';
+  const orders=stCustOrders();
+  const today=new Date().toISOString().slice(0,10);
+  const strip=s=>String(s||'').replace(/<[^>]*>/g,'');
+  const months={}; orders.forEach(o=>{ const mk=String(o.date||'').slice(0,7)||'—'; (months[mk]=months[mk]||[]).push(o); });
+  const mkeys=Object.keys(months).sort().reverse();
+  const L=[];
+  L.push('[Imperial Kitchen] 거래 명세서 / STATEMENT');
+  L.push('고객 '+cust.name+'  #'+(cust.no||''));
+  if(cust.phone) L.push('전화 '+cust.phone);
+  L.push('기준일 '+today);
+  L.push('');
+  mkeys.forEach(mk=>{
+    L.push('■ '+mk);
+    months[mk].sort((a,b)=>String(a.date).localeCompare(String(b.date))).forEach(o=>{
+      L.push(' '+String(o.date||'').slice(5)+'  '+strip(prodText(o)));
+      L.push('   '+t('total')+' '+money(o.amount)+' / '+t('paid')+' '+money(o.paid)+' / '+t('due')+' '+money(Number(o.due||0)));
+    });
+    L.push('');
+  });
+  L.push('━━━━━━━━━━━━');
+  L.push(t('total_due')+' : '+money(cust.due));
+  return L.join('\n');
+}
+async function sendStatement(){
+  const txt=statementText(); if(!txt) return;
+  if(navigator.share){ try{ await navigator.share({title:'거래 명세서',text:txt}); return; }catch(e){ if(e && e.name==='AbortError') return; } }
+  try{ await navigator.clipboard.writeText(txt); toast(t('st_copied')); }
+  catch(e){ const ta=document.createElement('textarea'); ta.value=txt; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); toast(t('st_copied')); }catch(_){ alert(txt); } ta.remove(); }
 }
 function viewHome(){
   const orders=STATE.orders||[], custs=STATE.customers||[];
