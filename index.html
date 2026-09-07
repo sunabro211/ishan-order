@@ -156,6 +156,9 @@
   .pr-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:2px 0 8px}
   .pr-shift{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)}
   .pr-shift:last-child{border-bottom:0}
+  .pr-types{display:flex;gap:7px;margin-top:4px}
+  .pr-tp{flex:1;border:1px solid var(--line);background:var(--glass);color:var(--muted);padding:9px 6px;border-radius:11px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;transition:.15s}
+  .pr-tp.on{color:#0a0d1f;border-color:transparent;background:linear-gradient(100deg,var(--cyan),var(--indigo))}
 </style>
 </head>
 <body>
@@ -184,7 +187,7 @@ const I18N = {
     tab_cust:'고객', tab_item:'품목', tab_admin:'관리자',
     tab_home:'홈', dash_title:'한눈에 보기', collect_rate:'수금률', due_customers:'미수금 고객', k_today_order:'오늘 주문', top_due:'미수금 상위 고객', recent_orders:'최근 주문', none_due:'미수금 없어요 👍',
     tab_statement:'명세', st_search:'이름 또는 전화번호 검색', st_pick:'위에서 고객을 선택하세요', st_copy:'명세서 보내기 / 복사', st_copied:'명세서가 복사됐어요', st_no_orders:'주문 내역이 없어요', st_asof:'기준일',
-    tab_emp:'직원', emp_add:'직원 추가', emp_wage:'시급', emp_name_ph:'예: Kamal', emp_none:'직원이 없어요', emp_total_month:'전 직원 이번 달 급여', emp_records:'근무 기록', emp_week:'이번 주 급여', emp_month:'이번 달 급여', emp_date:'날짜', emp_break:'휴게', emp_in:'출근', emp_out:'퇴근', emp_add_shift:'출퇴근 기록 추가', emp_no_shift:'근무 기록이 없어요', emp_daily:'일급',
+    tab_emp:'직원', emp_add:'직원 추가', emp_wage:'시급', emp_name_ph:'예: Kamal', emp_none:'직원이 없어요', emp_total_month:'전 직원 이번 달 급여', emp_records:'근무 기록', emp_week:'이번 주 급여', emp_month:'이번 달 급여', emp_date:'날짜', emp_break:'휴게', emp_in:'출근', emp_out:'퇴근', emp_add_shift:'출퇴근 기록 추가', emp_no_shift:'근무 기록이 없어요', emp_daily:'일급', emp_type:'구분', emp_wd:'평일', emp_we:'주말·휴일', emp_ot:'연장', emp_dup:'이 날짜에 이미 기록이 있어요. 그래도 추가할까요?',
     pick_cust:'고객 선택', add_line:'＋ 품목 추가', item:'품목', qty:'수량', price:'단가',
     total:'합계', save_order:'주문 등록', order_date:'주문일자', memo:'메모(선택)',
     st_new:'신청', st_ready:'준비완료', st_done:'배달완료',
@@ -204,7 +207,7 @@ const I18N = {
     tab_cust:'පාරිභෝගිකයන්', tab_item:'භාණ්ඩ', tab_admin:'පරිපාලක',
     tab_home:'මුල් පිටුව', dash_title:'සාරාංශය', collect_rate:'අයකිරීම් අනුපාතය', due_customers:'හිඟ ගනුදෙනුකරුවෝ', k_today_order:'අද ඇණවුම්', top_due:'වැඩිම හිඟ මුදල්', recent_orders:'නවතම ඇණවුම්', none_due:'හිඟ මුදල් නැත 👍',
     tab_statement:'ප්‍රකාශය', st_search:'නම හෝ දුරකථනය සොයන්න', st_pick:'ඉහළින් පාරිභෝගිකයෙක් තෝරන්න', st_copy:'ප්‍රකාශය යවන්න / පිටපත්', st_copied:'පිටපත් විය', st_no_orders:'ඇණවුම් නැත', st_asof:'දිනය',
-    tab_emp:'සේවකයෝ', emp_add:'සේවකයෙක් එක් කරන්න', emp_wage:'පැයට', emp_name_ph:'උදා: Kamal', emp_none:'සේවකයන් නැත', emp_total_month:'මෙම මාසයේ මුළු වැටුප', emp_records:'පැමිණීම් වාර්තා', emp_week:'මෙම සතියේ වැටුප', emp_month:'මෙම මාසයේ වැටුප', emp_date:'දිනය', emp_break:'විවේකය', emp_in:'පැමිණීම', emp_out:'පිටවීම', emp_add_shift:'වේලාව එක් කරන්න', emp_no_shift:'වාර්තා නැත', emp_daily:'දෛනික',
+    tab_emp:'සේවකයෝ', emp_add:'සේවකයෙක් එක් කරන්න', emp_wage:'පැයට', emp_name_ph:'උදා: Kamal', emp_none:'සේවකයන් නැත', emp_total_month:'මෙම මාසයේ මුළු වැටුප', emp_records:'පැමිණීම් වාර්තා', emp_week:'මෙම සතියේ වැටුප', emp_month:'මෙම මාසයේ වැටුප', emp_date:'දිනය', emp_break:'විවේකය', emp_in:'පැමිණීම', emp_out:'පිටවීම', emp_add_shift:'වේලාව එක් කරන්න', emp_no_shift:'වාර්තා නැත', emp_daily:'දෛනික', emp_type:'වර්ගය', emp_wd:'සතියේ දින', emp_we:'සති අන්තය', emp_ot:'අතිකාල', emp_dup:'මෙම දිනයට දැනටමත් වාර්තාවක් ඇත. එකතු කරන්නද?',
     pick_cust:'පාරිභෝගිකයා තෝරන්න', add_line:'＋ භාණ්ඩයක් එක් කරන්න', item:'භාණ්ඩය', qty:'ප්‍රමාණය', price:'ඒකක මිල',
     total:'එකතුව', save_order:'ඇණවුම සුරකින්න', order_date:'ඇණවුම් දිනය', memo:'සටහන (විකල්ප)',
     st_new:'නව', st_ready:'සූදානම්', st_done:'බෙදා හරින ලදී',
@@ -248,6 +251,8 @@ async function api(action, params={}, silent){
 let ADMIN_TIMER=null;
 let ST_SEL=null, ST_SEL_NO=null, ST_Q='';
 let EMP_SEL=null;
+const PR_MULT={wd:1, we:1.5, ot:1.5};
+let PR_TYPE='wd';
 function money(n){ return STATE.cur + Number(n||0).toLocaleString(); }
 
 /* ── 초기화 ─────────────────────────── */
@@ -292,7 +297,7 @@ function render(){
   switch(STATE.tab){
     case 'home':    m.innerHTML=viewHome(); break;
     case 'statement': m.innerHTML=viewStatement(); break;
-    case 'emp':     m.innerHTML=viewEmp(); break;
+    case 'emp':     m.innerHTML=viewEmp(); empPostRender(); break;
     case 'new':     m.innerHTML=viewNew(); bindNew(); break;
     case 'ready':   m.innerHTML=viewList(o=>o.status==='신청'); break;
     case 'pay':     m.innerHTML=viewPay(); break;
@@ -419,13 +424,17 @@ async function sendStatement(){
 function prMins(t){var a=String(t||'').split(':');return (Number(a[0])||0)*60+(Number(a[1])||0);}
 function prHours(s){var d=prMins(s.out)-prMins(s.in); if(d<0)d+=1440; d-=Number(s.brk||0); return Math.max(0,d)/60;}
 function prWageOf(id){var e=(STATE.employees||[]).find(x=>x.id===id); return e?Number(e.wage):0;}
-function prPay(s){return prHours(s)*prWageOf(s.emp);}
+function prPay(s){return prHours(s)*prWageOf(s.emp)*(Number(s.mult)||1);}
 function prToday(){return new Date().toISOString().slice(0,10);}
 function prWeekKey(dateStr){var d=new Date(String(dateStr)+'T00:00'); if(isNaN(d.getTime()))return ''; var off=(d.getDay()+6)%7; d.setDate(d.getDate()-off); return d.toISOString().slice(0,10);}
 function prShiftsOf(id){return (STATE.shifts||[]).filter(s=>s.emp===id).sort((a,b)=>String(b.date).localeCompare(String(a.date)));}
 function prMonthTotal(id){var ym=prToday().slice(0,7); return (STATE.shifts||[]).filter(s=>s.emp===id&&String(s.date).slice(0,7)===ym).reduce((t,s)=>t+prPay(s),0);}
 function prWeekTotal(id){var w=prWeekKey(prToday()); return (STATE.shifts||[]).filter(s=>s.emp===id&&prWeekKey(s.date)===w).reduce((t,s)=>t+prPay(s),0);}
 function prMonthHours(id){var ym=prToday().slice(0,7); return (STATE.shifts||[]).filter(s=>s.emp===id&&String(s.date).slice(0,7)===ym).reduce((t,s)=>t+prHours(s),0);}
+function setShType(k){ PR_TYPE=k; var bs=document.querySelectorAll('.pr-tp'); for(var i=0;i<bs.length;i++) bs[i].classList.toggle('on', bs[i].getAttribute('data-tp')===k); shHintUpdate(); }
+function shTypeAuto(){ var el=document.getElementById('shDate'); if(!el) return; var d=new Date(el.value+'T00:00'); var wknd=(d.getDay()===0||d.getDay()===6); setShType(wknd?'we':'wd'); }
+function shHintUpdate(){ var el=document.getElementById('shDate'), h=document.getElementById('shHint'); if(!el||!h) return; var d=new Date(el.value+'T00:00'); var wd=['일','월','화','수','목','금','토'][d.getDay()]; h.textContent=el.value.slice(5)+' ('+wd+') · '+t('emp_'+PR_TYPE)+' ×'+PR_MULT[PR_TYPE]; }
+function empPostRender(){ shTypeAuto(); }
 function viewEmp(){
   const emps=STATE.employees||[]; const ym=prToday().slice(0,7);
   const total=emps.reduce((x,e)=>x+prMonthTotal(e.id),0);
@@ -440,7 +449,7 @@ function viewEmp(){
   if(e){
     const shifts=prShiftsOf(e.id);
     const rws=shifts.length?shifts.map(s=>`<div class="pr-shift">
-        <div style="min-width:0"><div style="font-weight:600">${String(s.date).slice(5)}</div><div class="meta" style="font-family:var(--mono)">${s.in}–${s.out} · ${t('emp_break')} ${s.brk||0}m · ${prHours(s).toFixed(1)}h</div></div>
+        <div style="min-width:0"><div style="font-weight:600">${String(s.date).slice(5)}</div><div class="meta" style="font-family:var(--mono)">${s.in}–${s.out} · ${t('emp_break')} ${s.brk||0}m · ${prHours(s).toFixed(1)}h · ${t('emp_'+(s.type||'wd'))}${(Number(s.mult)||1)>1?' ×'+s.mult:''}</div></div>
         <div style="margin-left:auto;text-align:right"><div style="font-family:var(--mono);font-weight:700;color:var(--green)">${money(prPay(s))}</div><div class="meta">${t('emp_daily')}</div></div>
         <button class="pr-del" onclick="delShiftRec('${s.id}')">✕</button></div>`).join(''):`<div class="empty">${t('emp_no_shift')}</div>`;
     detail=`<div class="card"><h3>${e.name} · ${t('emp_records')}</h3>
@@ -448,10 +457,17 @@ function viewEmp(){
         <div class="kbox"><div class="n" style="color:var(--green)">${money(prWeekTotal(e.id))}</div><div class="l">${t('emp_week')}</div></div>
         <div class="kbox"><div class="n" style="color:var(--cyan)">${money(prMonthTotal(e.id))}</div><div class="l">${t('emp_month')}</div></div>
       </div>
-      <div class="row"><div style="flex:1.3"><label>${t('emp_date')}</label><input id="shDate" type="date" value="${prToday()}"></div>
+      <div class="row"><div style="flex:1.3"><label>${t('emp_date')}</label><input id="shDate" type="date" value="${prToday()}" onchange="shTypeAuto()"></div>
         <div><label>${t('emp_break')}(m)</label><input id="shBrk" type="number" value="60"></div></div>
       <div class="row"><div><label>${t('emp_in')}</label><input id="shIn" type="time" value="09:00"></div>
         <div><label>${t('emp_out')}</label><input id="shOut" type="time" value="18:00"></div></div>
+      <label>${t('emp_type')}</label>
+      <div class="pr-types">
+        <button type="button" class="pr-tp" data-tp="wd" onclick="setShType('wd')">${t('emp_wd')}</button>
+        <button type="button" class="pr-tp" data-tp="we" onclick="setShType('we')">${t('emp_we')} ×1.5</button>
+        <button type="button" class="pr-tp" data-tp="ot" onclick="setShType('ot')">${t('emp_ot')} ×1.5</button>
+      </div>
+      <div class="hint" id="shHint"></div>
       <button class="btn blue" onclick="addShiftRec()">＋ ${t('emp_add_shift')}</button>
       <div style="margin-top:12px">${rws}</div></div>`;
   }
@@ -480,8 +496,10 @@ async function addShiftRec(){
   const date=document.getElementById('shDate').value||prToday();
   const i=document.getElementById('shIn').value, o=document.getElementById('shOut').value;
   if(!i||!o) return;
+  const dup=(STATE.shifts||[]).some(s=>s.emp===EMP_SEL && String(s.date)===String(date));
+  if(dup && !confirm(t('emp_dup'))) return;
   const brk=Number(document.getElementById('shBrk').value||0);
-  await api('emp',{op:'addShift',emp:EMP_SEL,date,in:i,out:o,brk}); toast(t('saved')); go('emp');
+  await api('emp',{op:'addShift',emp:EMP_SEL,date,in:i,out:o,brk,type:PR_TYPE,mult:PR_MULT[PR_TYPE]||1}); toast(t('saved')); go('emp');
 }
 async function delShiftRec(id){ await api('emp',{op:'delShift',id}); toast(t('saved')); go('emp'); }
 function viewHome(){
