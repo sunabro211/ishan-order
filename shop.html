@@ -136,7 +136,8 @@ const I18N = {
        st_wait:'입금대기', st_go:'진행중', st_done:'배달완료',
        order_ok:'주문 완료! 확인 메일을 보냈어요', order_ok2:'메일의 계좌로 입금 후, 이샨에게 입금 스크린샷과 주문번호를 보내주세요.',
        signup_ok:'회원가입 완료! 고객번호', need_id:'이메일/전화번호와 비밀번호를 입력하세요',
-       won:'원', mode_title:'받는 방법', m_delivery:'배달', m_pickup:'픽업', all:'전체', empty_cat:'이 분류에 상품이 없어요' },
+       won:'원', mode_title:'받는 방법', m_delivery:'배달', m_pickup:'픽업', all:'전체', empty_cat:'이 분류에 상품이 없어요',
+       forgot:'비밀번호를 잊으셨나요?', reset_title:'비밀번호 찾기', reset_send:'임시 비밀번호 받기', reset_ok:'임시 비밀번호를 이메일로 보냈어요', back_login:'← 로그인으로' },
   si:{ login:'පිවිසෙන්න', signup:'ලියාපදිංචිය', id_ph:'ඊමේල් හෝ දුරකථනය', pw:'මුරපදය',
        email:'ඊමේල්', name:'නම', phone:'දුරකථනය', addr:'ලිපිනය',
        to_signup:'මුල් වරද? ලියාපදිංචි වන්න', to_login:'දැනටමත් ගිණුමක් තිබේ · පිවිසෙන්න',
@@ -146,7 +147,8 @@ const I18N = {
        st_wait:'ගෙවීම බලාපොරොත්තුවෙන්', st_go:'ක්‍රියාත්මකයි', st_done:'බෙදා හරින ලදී',
        order_ok:'ඇණවුම සම්පූර්ණයි! ඊමේල් එකක් යවන ලදී', order_ok2:'ඊමේල් හි ගිණුමට ගෙවා, ඉෂාන්ට රිසිට්පත සහ ඇණවුම් අංකය එවන්න.',
        signup_ok:'ලියාපදිංචිය සම්පූර්ණයි! අංකය', need_id:'ඊමේල්/දුරකථනය සහ මුරපදය ඇතුළත් කරන්න',
-       won:'', mode_title:'ලබාගැනීමේ ක්‍රමය', m_delivery:'බෙදාහැරීම', m_pickup:'ලබාගැනීම', all:'සියල්ල', empty_cat:'මෙම වර්ගයේ භාණ්ඩ නැත' }
+       won:'', mode_title:'ලබාගැනීමේ ක්‍රමය', m_delivery:'බෙදාහැරීම', m_pickup:'ලබාගැනීම', all:'සියල්ල', empty_cat:'මෙම වර්ගයේ භාණ්ඩ නැත',
+       forgot:'මුරපදය අමතකද?', reset_title:'මුරපදය සොයන්න', reset_send:'තාවකාලික මුරපදය ලබාගන්න', reset_ok:'තාවකාලික මුරපදය ඊමේල් කරන ලදී', back_login:'← පිවිසුමට' }
 };
 let LANG = localStorage.getItem('shop_lang') || 'ko';
 function t(k){ return (I18N[LANG]&&I18N[LANG][k]) || I18N.ko[k] || k; }
@@ -196,7 +198,14 @@ function authView(){
       <label>${t('id_ph')}</label><input id="lid" placeholder="${t('id_ph')}">
       <label>${t('pw')}</label><input id="lpw" type="password">
       <button class="btn" onclick="doLogin()">${t('login')}</button>
+      <div class="switch" onclick="AUTHMODE='reset';render()">${t('forgot')}</div>
       <div class="switch" onclick="AUTHMODE='signup';render()">${t('to_signup')}</div></div>`;
+  }
+  if(AUTHMODE==='reset'){
+    return `<div class="card"><h3>${t('reset_title')}</h3>
+      <label>${t('email')}</label><input id="rEmail" type="email">
+      <button class="btn" onclick="doReset()">${t('reset_send')}</button>
+      <div class="switch" onclick="AUTHMODE='login';render()">${t('back_login')}</div></div>`;
   }
   return `<div class="card"><h3>${t('signup')}</h3>
     <label>${t('email')}</label><input id="sEmail" type="email">
@@ -220,6 +229,12 @@ async function doSignup(){
   const r=await api('signup',{email,pw,name,phone:document.getElementById('sPhone').value.trim(),addr:document.getElementById('sAddr').value.trim()});
   toast(t('signup_ok')+' '+r.no);
   ME={no:r.no,name:r.name}; localStorage.setItem('shop_me',JSON.stringify(ME)); afterLogin();
+}
+async function doReset(){
+  const email=document.getElementById('rEmail').value.trim();
+  if(!email) return toast(t('email'));
+  await api('findPassword',{email});
+  toast(t('reset_ok')); AUTHMODE='login'; render();
 }
 function logout(){ localStorage.removeItem('shop_me'); ME=null; CART={}; TAB='shop';
   document.getElementById('me').style.display='none'; document.getElementById('logoutBtn').style.display='none'; render(); }

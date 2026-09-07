@@ -200,7 +200,8 @@ const I18N = {
     tab_pay:'입금확인', pay_wait:'입금대기', confirm_pay:'입금 확인', addr:'주소',
     bank_title:'입금 계좌 (고객 주문확인 메일에 표시)', bank_name:'은행', bank_account:'계좌번호',
     bank_holder:'예금주', bank_hint:'고객 주문확인 메일에 이 계좌가 안내됩니다.',
-    stock:'재고', stock_ph:'비우면 무제한', deposit_amt:'입금 금액', already_paid:'이미 입금', remaining:'미수금', collect_now:'이번에 받은 금액', delivery:'배달', pickup:'픽업', adjust:'금액 변경 · 배달비', goods_amt:'상품 금액', delivery_fee:'배달비', reason:'사유', reason_ph:'예: OO 품절 / OO 추가', apply:'금액 적용', refund:'환불 필요', category:'분류', cat_none:'분류 없음'
+    stock:'재고', stock_ph:'비우면 무제한', deposit_amt:'입금 금액', already_paid:'이미 입금', remaining:'미수금', collect_now:'이번에 받은 금액', delivery:'배달', pickup:'픽업', adjust:'금액 변경 · 배달비', goods_amt:'상품 금액', delivery_fee:'배달비', reason:'사유', reason_ph:'예: OO 품절 / OO 추가', apply:'금액 적용', refund:'환불 필요', category:'분류', cat_none:'분류 없음',
+    email:'이메일', edit:'수정', del:'삭제', edit_cust:'고객 정보 수정', dup_phone:'같은 번호의 고객이 있어요. 그래도 추가할까요?', confirm_del:'이 고객을 삭제할까요?'
   },
   si:{
     tab_new:'නව ඇණවුම', tab_ready:'සූදානම', tab_deliver:'බෙදා/අයකර', tab_all:'සියලු ඇණවුම්',
@@ -220,7 +221,8 @@ const I18N = {
     tab_pay:'ගෙවීම් තහවුරු', pay_wait:'ගෙවීම බලාපොරොත්තුවෙන්', confirm_pay:'ගෙවීම තහවුරු කරන්න', addr:'ලිපිනය',
     bank_title:'බැංකු ගිණුම (ඇණවුම් ඊමේල් හි පෙන්වයි)', bank_name:'බැංකුව', bank_account:'ගිණුම් අංකය',
     bank_holder:'ගිණුම් හිමිකරු', bank_hint:'පාරිභෝගික ඇණවුම් ඊමේල් හි මෙම ගිණුම පෙන්වයි.',
-    stock:'තොග', stock_ph:'හිස්නම් අසීමිත', deposit_amt:'තැන්පත් මුදල', already_paid:'ලැබී ඇත', remaining:'හිඟ මුදල', collect_now:'දැන් ලැබුණු මුදල', delivery:'බෙදාහැරීම', pickup:'ලබාගැනීම', adjust:'මුදල වෙනස් · ගාස්තුව', goods_amt:'භාණ්ඩ මිල', delivery_fee:'බෙදාහැරීම් ගාස්තුව', reason:'හේතුව', reason_ph:'උදා: OO නැත / OO එකතු', apply:'යොදන්න', refund:'ආපසු ගෙවීම', category:'වර්ගය', cat_none:'වර්ගයක් නැත'
+    stock:'තොග', stock_ph:'හිස්නම් අසීමිත', deposit_amt:'තැන්පත් මුදල', already_paid:'ලැබී ඇත', remaining:'හිඟ මුදල', collect_now:'දැන් ලැබුණු මුදල', delivery:'බෙදාහැරීම', pickup:'ලබාගැනීම', adjust:'මුදල වෙනස් · ගාස්තුව', goods_amt:'භාණ්ඩ මිල', delivery_fee:'බෙදාහැරීම් ගාස්තුව', reason:'හේතුව', reason_ph:'උදා: OO නැත / OO එකතු', apply:'යොදන්න', refund:'ආපසු ගෙවීම', category:'වර්ගය', cat_none:'වර්ගයක් නැත',
+    email:'ඊමේල්', edit:'සංස්කරණය', del:'මකන්න', edit_cust:'පාරිභෝගික තොරතුරු', dup_phone:'මෙම අංකයේ ගනුදෙනුකරුවෙක් සිටී. එකතු කරන්නද?', confirm_del:'මෙම ගනුදෙනුකරු මකන්නද?'
   }
 };
 let LANG = localStorage.getItem('oc_lang') || 'ko';
@@ -700,19 +702,48 @@ function viewAll(){
 
 /* 고객 */
 function viewCust(){
+  const esc=s=>String(s||'').replace(/"/g,'&quot;');
   const list=STATE.customers.map(c=>`<div class="item" style="margin-bottom:8px">
-    <div class="top"><div><div class="cust">${c.name} <span class="meta">#${c.no||''}</span></div><div class="meta">${c.phone||''}${c.addr?' · '+c.addr:''}</div></div>
+    <div class="top"><div><div class="cust">${c.name} <span class="meta">#${c.no||''}</span></div><div class="meta">${c.phone||''}${c.addr?' · '+c.addr:''}${c.email?' · '+c.email:''}</div></div>
       <span class="${c.due>0?'due-red':'due-ok'}">${t('cur_due')} ${money(c.due)}</span></div>
+    <div style="display:flex;gap:6px;margin-top:9px">
+      <button class="btn sm grey" onclick="toggleCustEdit('${c.id}')">✏️ ${t('edit')}</button>
+      <button class="btn sm grey" onclick="deleteCust('${c.id}')">🗑️ ${t('del')}</button></div>
+    <div id="cE_${c.id}" style="display:none;border-top:1px dashed var(--line);padding-top:9px;margin-top:9px">
+      <label>${t('name')}</label><input id="e_name_${c.id}" value="${esc(c.name)}">
+      <label>${t('phone')}</label><input id="e_phone_${c.id}" value="${esc(c.phone)}">
+      <label>${t('addr')}</label><input id="e_addr_${c.id}" value="${esc(c.addr)}">
+      <label>${t('email')}</label><input id="e_email_${c.id}" type="email" value="${esc(c.email)}">
+      <button class="btn sm" onclick="saveCustEdit('${c.id}')">${t('save')}</button></div>
   </div>`).join('') || `<div class="empty">${t('empty')}</div>`;
   return `<div class="card"><h3>${t('add')}</h3>
     <label>${t('name')}</label><input id="cName">
     <label>${t('phone')}</label><input id="cPhone">
     <label>${t('addr')}</label><input id="cAddr">
+    <label>${t('email')}</label><input id="cEmail" type="email">
     <button class="btn" onclick="addCust()">${t('add')}</button></div><div class="cards">${list}</div>`;
 }
 async function addCust(){
   const name=document.getElementById('cName').value.trim(); if(!name) return toast(t('name'));
-  await api('addCustomer',{name,phone:document.getElementById('cPhone').value.trim(),addr:document.getElementById('cAddr').value.trim()}); toast(t('saved')); go('cust');
+  const phone=document.getElementById('cPhone').value.trim();
+  const email=document.getElementById('cEmail').value.trim();
+  const dupEmail = email && (STATE.customers||[]).some(c=>String(c.email||'').toLowerCase()===email.toLowerCase());
+  if(dupEmail) return toast('이미 등록된 이메일입니다.');
+  const dupPhone = phone && (STATE.customers||[]).some(c=>String(c.phone||'')===phone);
+  if(dupPhone && !confirm(t('dup_phone'))) return;
+  await api('addCustomer',{name,phone,addr:document.getElementById('cAddr').value.trim(),email}); toast(t('saved')); go('cust');
+}
+function toggleCustEdit(id){ const el=document.getElementById('cE_'+id); if(el) el.style.display=(el.style.display==='none'?'block':'none'); }
+async function saveCustEdit(id){
+  const name=document.getElementById('e_name_'+id).value.trim(); if(!name) return toast(t('name'));
+  const email=document.getElementById('e_email_'+id).value.trim();
+  const dupEmail = email && (STATE.customers||[]).some(c=>c.id!==id && String(c.email||'').toLowerCase()===email.toLowerCase());
+  if(dupEmail) return toast('이미 등록된 이메일입니다.');
+  await api('updateCustomer',{id,name,phone:document.getElementById('e_phone_'+id).value.trim(),addr:document.getElementById('e_addr_'+id).value.trim(),email}); toast(t('saved')); go('cust');
+}
+async function deleteCust(id){
+  if(!confirm(t('confirm_del'))) return;
+  await api('deleteCustomer',{id}); toast(t('saved')); go('cust');
 }
 
 /* 품목 */
