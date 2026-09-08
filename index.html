@@ -201,6 +201,7 @@ const I18N = {
     bank_title:'입금 계좌 (고객 주문확인 메일에 표시)', bank_name:'은행', bank_account:'계좌번호',
     bank_holder:'예금주', bank_hint:'고객 주문확인 메일에 이 계좌가 안내됩니다.',
     stock:'재고', stock_ph:'비우면 무제한', deposit_amt:'입금 금액', already_paid:'이미 입금', remaining:'미수금', collect_now:'이번에 받은 금액', delivery:'배달', pickup:'픽업', adjust:'금액 변경 · 배달비', goods_amt:'상품 금액', delivery_fee:'배달비', reason:'사유', reason_ph:'예: OO 품절 / OO 추가', apply:'금액 적용', refund:'환불 필요', category:'분류', cat_none:'분류 없음',
+    tab_money:'수익·지출', pl_title:'이번 달 손익', pl_sales:'매출', pl_collected:'실수금', pl_cogs:'물건값(원가)', pl_grossmargin:'매출총이익', pl_expense:'지출', pl_salary:'급여', pl_totalcost:'총지출', pl_profit_sales:'순이익(매출기준)', pl_profit_cash:'순이익(수금기준)', pl_hint:'매출기준 = 아직 안 받은 돈 포함 · 수금기준 = 실제 들어온 돈', exp_add:'지출 추가', exp_amt:'금액', exp_memo:'메모(선택)', exp_none:'지출 내역이 없어요', exp_this_month:'이번 달 지출', cat_material:'자재비', cat_fuel:'기름값', cat_etc:'기타', cost:'원가', margin:'마진',
     email:'이메일', edit:'수정', del:'삭제', edit_cust:'고객 정보 수정', dup_phone:'같은 번호의 고객이 있어요. 그래도 추가할까요?', confirm_del:'이 고객을 삭제할까요?'
   },
   si:{
@@ -222,6 +223,7 @@ const I18N = {
     bank_title:'බැංකු ගිණුම (ඇණවුම් ඊමේල් හි පෙන්වයි)', bank_name:'බැංකුව', bank_account:'ගිණුම් අංකය',
     bank_holder:'ගිණුම් හිමිකරු', bank_hint:'පාරිභෝගික ඇණවුම් ඊමේල් හි මෙම ගිණුම පෙන්වයි.',
     stock:'තොග', stock_ph:'හිස්නම් අසීමිත', deposit_amt:'තැන්පත් මුදල', already_paid:'ලැබී ඇත', remaining:'හිඟ මුදල', collect_now:'දැන් ලැබුණු මුදල', delivery:'බෙදාහැරීම', pickup:'ලබාගැනීම', adjust:'මුදල වෙනස් · ගාස්තුව', goods_amt:'භාණ්ඩ මිල', delivery_fee:'බෙදාහැරීම් ගාස්තුව', reason:'හේතුව', reason_ph:'උදා: OO නැත / OO එකතු', apply:'යොදන්න', refund:'ආපසු ගෙවීම', category:'වර්ගය', cat_none:'වර්ගයක් නැත',
+    tab_money:'ලාභ/වියදම්', pl_title:'මෙම මාසයේ ලාභ-අලාභ', pl_sales:'විකුණුම්', pl_collected:'ලැබුණු මුදල', pl_cogs:'භාණ්ඩ පිරිවැය', pl_grossmargin:'දළ ලාභය', pl_expense:'වියදම්', pl_salary:'වැටුප්', pl_totalcost:'මුළු වියදම', pl_profit_sales:'ශුද්ධ ලාභය (විකුණුම්)', pl_profit_cash:'ශුද්ධ ලාභය (ලැබූ මුදල)', pl_hint:'විකුණුම් = නොලැබූ මුදල් ද ඇතුළත් · ලැබූ මුදල = සැබෑ ලැබීම්', exp_add:'වියදමක් එක් කරන්න', exp_amt:'මුදල', exp_memo:'සටහන (විකල්ප)', exp_none:'වියදම් නැත', exp_this_month:'මෙම මාසයේ වියදම්', cat_material:'ද්‍රව්‍ය පිරිවැය', cat_fuel:'ඉන්ධන', cat_etc:'වෙනත්', cost:'පිරිවැය', margin:'ලාභය',
     email:'ඊමේල්', edit:'සංස්කරණය', del:'මකන්න', edit_cust:'පාරිභෝගික තොරතුරු', dup_phone:'මෙම අංකයේ ගනුදෙනුකරුවෙක් සිටී. එකතු කරන්නද?', confirm_del:'මෙම ගනුදෙනුකරු මකන්නද?'
   }
 };
@@ -229,12 +231,12 @@ let LANG = localStorage.getItem('oc_lang') || 'ko';
 function t(k){ return (I18N[LANG] && I18N[LANG][k]) || I18N.ko[k] || k; }
 
 const TABS = {
-  boss:  ['home','new','pay','deliver','statement','all','cust','emp'],
-  vice:  ['home','ready','pay','deliver','statement','all','cust','item','emp'],
-  admin: ['home','new','pay','ready','deliver','statement','all','cust','item','emp','admin']
+  boss:  ['home','new','pay','deliver','statement','all','cust','emp','money'],
+  vice:  ['home','ready','pay','deliver','statement','all','cust','item','emp','money'],
+  admin: ['home','new','pay','ready','deliver','statement','all','cust','item','emp','money','admin']
 };
 
-let STATE = { role:'', name:'', cur:'₩', items:[], customers:[], orders:[], employees:[], shifts:[], tab:'' };
+let STATE = { role:'', name:'', cur:'₩', items:[], customers:[], orders:[], employees:[], shifts:[], expenses:[], tab:'' };
 
 /* ── 통신 ───────────────────────────── */
 function loading(on){ document.getElementById('loading').style.display = on?'flex':'none'; }
@@ -273,7 +275,7 @@ async function init(){
 function buildNav(){
   const tabs = TABS[STATE.role]||['all'];
   const nav = document.getElementById('nav'); nav.innerHTML='';
-  const lbl = {home:'tab_home',new:'tab_new',ready:'tab_ready',pay:'tab_pay',deliver:'tab_deliver',statement:'tab_statement',all:'tab_all',cust:'tab_cust',item:'tab_item',emp:'tab_emp',admin:'tab_admin'};
+  const lbl = {home:'tab_home',new:'tab_new',ready:'tab_ready',pay:'tab_pay',deliver:'tab_deliver',statement:'tab_statement',all:'tab_all',cust:'tab_cust',item:'tab_item',emp:'tab_emp',money:'tab_money',admin:'tab_admin'};
   tabs.forEach(tb=>{
     const b=document.createElement('button');
     b.textContent=t(lbl[tb]); b.dataset.tab=tb; b.onclick=()=>go(tb);
@@ -282,9 +284,10 @@ function buildNav(){
 }
 async function go(tab){
   STATE.tab=tab; buildNav();
-  if(['home','ready','deliver','all','pay','statement'].includes(tab) || tab==='admin'){ STATE.orders = await api('listOrders'); }
+  if(['home','ready','deliver','all','pay','statement','money'].includes(tab) || tab==='admin'){ STATE.orders = await api('listOrders'); }
   if(['home','cust','deliver','new','all','statement'].includes(tab)){ STATE.customers = await api('listCustomers'); }
-  if(tab==='emp'){ const d=await api('emp',{op:'list'}); STATE.employees=d.employees||[]; STATE.shifts=d.shifts||[]; if(!EMP_SEL && STATE.employees[0]) EMP_SEL=STATE.employees[0].id; }
+  if(['emp','home','money'].includes(tab)){ const d=await api('emp',{op:'list'}); STATE.employees=d.employees||[]; STATE.shifts=d.shifts||[]; if(!EMP_SEL && STATE.employees[0]) EMP_SEL=STATE.employees[0].id; }
+  if(['home','money'].includes(tab)){ STATE.expenses = await api('listExpenses'); }
   render();
 }
 function toggleLang(){ LANG = LANG==='ko'?'si':'ko'; localStorage.setItem('oc_lang',LANG);
@@ -307,6 +310,7 @@ function render(){
     case 'all':     m.innerHTML=viewAll(); break;
     case 'cust':    m.innerHTML=viewCust(); break;
     case 'item':    m.innerHTML=viewItem(); break;
+    case 'money':   m.innerHTML=viewMoney(); break;
     case 'admin':   viewAdmin(m); break;
   }
 }
@@ -506,6 +510,7 @@ async function addShiftRec(){
 async function delShiftRec(id){ await api('emp',{op:'delShift',id}); toast(t('saved')); go('emp'); }
 function viewHome(){
   const orders=STATE.orders||[], custs=STATE.customers||[];
+  const pl=plCalc();
   const today=new Date().toISOString().slice(0,10);
   const todayOrders=orders.filter(o=>String(o.date||'').slice(0,10)===today).length;
   const readyCnt=orders.filter(o=>o.status==='준비완료').length;
@@ -537,6 +542,15 @@ function viewHome(){
       <div class="kbox"><div class="n">${todayOrders}</div><div class="l">${t('k_today_order')}</div></div>
       <div class="kbox"><div class="n" style="color:var(--indigo)">${readyCnt}</div><div class="l">${t('st_ready')}</div></div>
       <div class="kbox"><div class="n" style="color:var(--cyan)">${waitCnt}</div><div class="l">${t('pay_wait')}</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>${t('pl_title')}</h3>
+    <div class="kpi">
+      <div class="box"><div class="l">${t('pl_sales')}</div><div class="n">${money(pl.sales)}</div></div>
+      <div class="box"><div class="l">${t('pl_collected')}</div><div class="n">${money(pl.collected)}</div></div>
+      <div class="box"><div class="l">${t('pl_profit_sales')}</div><div class="n" style="color:${plColor(pl.profitSales)}">${money(pl.profitSales)}</div></div>
+      <div class="box"><div class="l">${t('pl_profit_cash')}</div><div class="n" style="color:${plColor(pl.profitCash)}">${money(pl.profitCash)}</div></div>
     </div>
   </div>
   <div class="card"><h3>${t('top_due')}</h3>${topList}</div>
@@ -764,14 +778,17 @@ function viewItem(){
     <select id="ct_${it.id}">${catOptions(it.cat||'')}</select>
     <div class="row" style="margin-top:8px">
       <div style="flex:1"><label style="margin:0 0 3px">${t('price')}</label><input type="number" id="pr_${it.id}" value="${it.price}"></div>
+      <div style="flex:1"><label style="margin:0 0 3px">${t('cost')}</label><input type="number" id="co_${it.id}" value="${it.cost||0}"></div>
       <div style="flex:1"><label style="margin:0 0 3px">${t('stock')}</label><input type="number" id="st_${it.id}" value="${managed?Number(it.stock):''}" placeholder="∞"></div>
     </div>
+    <div class="total" style="font-size:14px;margin-top:6px;padding-top:6px"><span class="meta">${t('margin')}</span><span style="font-family:var(--mono);color:${(it.price-(it.cost||0))>=0?'var(--green)':'#f87171'}">${money(it.price-(it.cost||0))} · ${it.price>0?Math.round((it.price-(it.cost||0))/it.price*100):0}%</span></div>
     <button class="btn sm blue" onclick="saveItem('${it.id}')">${t('save')}</button>
   </div>`;
   }).join('') || `<div class="empty">${t('empty')}</div>`;
   return `<div class="card"><h3>${t('add')}</h3>
     <label>${t('item')}</label><input id="iName">
     <label>${t('price')}</label><input type="number" id="iPrice">
+    <label>${t('cost')}</label><input type="number" id="iCost">
     <label>${t('stock')}</label><input type="number" id="iStock" placeholder="${t('stock_ph')}">
     <label>${t('item')} (සිංහල)</label><input id="iSi">
     <label>${t('category')}</label><select id="iCat">${catOptions('')}</select>
@@ -780,13 +797,94 @@ function viewItem(){
 async function addItem2(){
   const name=document.getElementById('iName').value.trim(); if(!name) return toast(t('item'));
   const sv=document.getElementById('iStock').value.trim();
-  await api('addItem',{name,price:Number(document.getElementById('iPrice').value)||0,si:document.getElementById('iSi').value.trim(),stock:sv===''?'':Number(sv),cat:document.getElementById('iCat').value});
+  await api('addItem',{name,price:Number(document.getElementById('iPrice').value)||0,cost:Number(document.getElementById('iCost').value)||0,si:document.getElementById('iSi').value.trim(),stock:sv===''?'':Number(sv),cat:document.getElementById('iCat').value});
   toast(t('saved')); STATE.items=await api('listItems'); go('item');
 }
 async function saveItem(id){
   const sv=document.getElementById('st_'+id).value.trim();
-  await api('updateItem',{id,price:Number(document.getElementById('pr_'+id).value)||0,stock:sv===''?'':Number(sv),cat:document.getElementById('ct_'+id).value});
+  await api('updateItem',{id,price:Number(document.getElementById('pr_'+id).value)||0,cost:Number(document.getElementById('co_'+id).value)||0,stock:sv===''?'':Number(sv),cat:document.getElementById('ct_'+id).value});
   toast(t('saved')); STATE.items=await api('listItems'); go('item');
+}
+
+/* 수익·지출 (원가·마진 + 지출 → 순이익) */
+// 이번 달 손익 계산 (전부 화면에서 계산 — 이번 달 '배달완료' 주문 기준)
+function plCalc(){
+  const ym=new Date().toISOString().slice(0,7);
+  const itemCost={}; (STATE.items||[]).forEach(it=>{ itemCost[it.name]=Number(it.cost||0); });
+  let sales=0, collected=0, cogs=0;
+  (STATE.orders||[]).forEach(o=>{
+    if(o.status==='취소') return;
+    const dm=String(o.deliveredAt||'').slice(0,7);
+    if(o.status==='배달완료' && dm===ym){
+      sales+=Number(o.amount||0);
+      collected+=Number(o.paid||0);
+      (o.lines||[]).forEach(l=>{
+        const c=(l.cost!=null && l.cost!=='') ? Number(l.cost) : (itemCost[l.name]||0); // 옛 주문은 현재 원가로 추정
+        cogs+=c*Number(l.qty||0);
+      });
+    }
+  });
+  let salary=0; (STATE.employees||[]).forEach(e=>{ salary+=prMonthTotal(e.id); }); // 이번 달 전 직원 급여
+  const exps=(STATE.expenses||[]).filter(x=>String(x.date||'').slice(0,7)===ym);
+  let expense=0; exps.forEach(x=>{ expense+=Number(x.amount||0); });
+  const totalCost=cogs+salary+expense;
+  return { ym, sales, collected, cogs, salary, expense, totalCost,
+           grossMargin:sales-cogs, profitSales:sales-totalCost, profitCash:collected-totalCost };
+}
+function plColor(v){ return v>=0 ? 'var(--green)' : '#f87171'; }
+function viewMoney(){
+  const pl=plCalc();
+  const detail=`<div class="card">
+    <h3>${t('pl_title')} <span class="meta">${pl.ym}</span></h3>
+    <div class="total"><span>${t('pl_sales')}</span><span>${money(pl.sales)}</span></div>
+    <div class="total"><span>${t('pl_collected')}</span><span>${money(pl.collected)}</span></div>
+    <div class="total"><span>− ${t('pl_cogs')}</span><span class="due-red">${money(pl.cogs)}</span></div>
+    <div class="total"><span>${t('pl_grossmargin')}</span><span>${money(pl.grossMargin)}</span></div>
+    <div class="total"><span>− ${t('pl_salary')}</span><span class="due-red">${money(pl.salary)}</span></div>
+    <div class="total"><span>− ${t('pl_expense')}</span><span class="due-red">${money(pl.expense)}</span></div>
+    <div class="total" style="border-top:2px solid var(--line);margin-top:6px;padding-top:10px"><span>${t('pl_profit_sales')}</span><span style="color:${plColor(pl.profitSales)}">${money(pl.profitSales)}</span></div>
+    <div class="total" style="border-top:0;padding-top:4px"><span>${t('pl_profit_cash')}</span><span style="color:${plColor(pl.profitCash)}">${money(pl.profitCash)}</span></div>
+    <div class="hint">${t('pl_hint')}</div>
+  </div>`;
+  const addForm=`<div class="card">
+    <h3>${t('exp_add')}</h3>
+    <label>${t('category')}</label>
+    <select id="exCat">
+      <option value="자재비">🧾 ${t('cat_material')}</option>
+      <option value="기름값">⛽ ${t('cat_fuel')}</option>
+      <option value="기타">📦 ${t('cat_etc')}</option>
+    </select>
+    <div class="row" style="margin-top:8px">
+      <div style="flex:1"><label style="margin:0 0 3px">${t('exp_amt')}</label><input type="number" id="exAmt" inputmode="numeric"></div>
+      <div style="flex:1"><label style="margin:0 0 3px">${t('order_date')}</label><input type="date" id="exDate" value="${new Date().toISOString().slice(0,10)}"></div>
+    </div>
+    <label>${t('exp_memo')}</label><input id="exMemo">
+    <button class="btn" onclick="addExpense2()">${t('add')}</button>
+  </div>`;
+  const catEmoji={'자재비':'🧾','기름값':'⛽','기타':'📦'};
+  const catLabel={'자재비':t('cat_material'),'기름값':t('cat_fuel'),'기타':t('cat_etc')};
+  const exps=(STATE.expenses||[]).filter(x=>String(x.date||'').slice(0,7)===pl.ym).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  const list=exps.map(x=>`<div class="rankrow">
+      <div style="min-width:0"><div class="cust">${catEmoji[x.cat]||'📦'} ${catLabel[x.cat]||x.cat} <span class="meta">${String(x.date).slice(5)}</span></div>${x.memo?`<div class="meta">${x.memo}</div>`:''}</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="due-red" style="font-family:var(--mono)">${money(x.amount)}</span>
+        <button class="btn sm grey" onclick="delExpense2('${x.id}')">${t('del')}</button>
+      </div></div>`).join('') || `<div class="empty">${t('exp_none')}</div>`;
+  const listCard=`<div class="card"><h3>${t('exp_this_month')} <span class="meta" style="font-family:var(--mono)">${money(pl.expense)}</span></h3>${list}</div>`;
+  return detail+addForm+listCard;
+}
+async function addExpense2(){
+  const cat=document.getElementById('exCat').value;
+  const amt=Number(document.getElementById('exAmt').value)||0;
+  if(amt<=0) return toast(t('exp_amt'));
+  const date=document.getElementById('exDate').value||new Date().toISOString().slice(0,10);
+  const memo=document.getElementById('exMemo').value.trim();
+  await api('addExpense',{cat,amount:amt,date,memo});
+  toast(t('saved')); go('money');
+}
+async function delExpense2(id){
+  if(!confirm(t('confirm_del'))) return;
+  await api('delExpense',{id}); toast(t('saved')); go('money');
 }
 
 /* 관리자 */
