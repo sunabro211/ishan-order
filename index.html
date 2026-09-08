@@ -231,7 +231,7 @@ let LANG = localStorage.getItem('oc_lang') || 'ko';
 function t(k){ return (I18N[LANG] && I18N[LANG][k]) || I18N.ko[k] || k; }
 
 const TABS = {
-  boss:  ['home','new','pay','deliver','statement','all','cust','emp','money'],
+  boss:  ['home','new','pay','deliver','statement','all','cust','item','emp','money'],
   vice:  ['home','ready','pay','deliver','statement','all','cust','item','emp','money'],
   admin: ['home','new','pay','ready','deliver','statement','all','cust','item','emp','money','admin']
 };
@@ -258,6 +258,8 @@ let EMP_SEL=null;
 const PR_MULT={wd:1, we:1.5, ot:1.5};
 let PR_TYPE='wd';
 function money(n){ return STATE.cur + Number(n||0).toLocaleString(); }
+// 한국시간(KST) 기준 'yyyy-MM-dd' — 백엔드가 KST로 저장하므로 화면도 KST로 통일 (UTC로 계산하면 새벽에 하루가 어긋남)
+function kToday(){ return new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Seoul'}); }
 
 /* ── 초기화 ─────────────────────────── */
 async function init(){
@@ -345,7 +347,7 @@ function stBodyHTML(){
   const cust=STATE.customers.find(c=>String(c.no)===String(ST_SEL_NO)) || STATE.customers.find(c=>c.name===ST_SEL);
   if(!cust) return '';
   const orders=stCustOrders();
-  const today=new Date().toISOString().slice(0,10);
+  const today=kToday();
   const months={}; orders.forEach(o=>{ const mk=String(o.date||'').slice(0,7)||'—'; (months[mk]=months[mk]||[]).push(o); });
   const mkeys=Object.keys(months).sort().reverse();
   const monthsHTML=mkeys.length?mkeys.map(mk=>{
@@ -397,7 +399,7 @@ function statementText(){
   const cust=STATE.customers.find(c=>String(c.no)===String(ST_SEL_NO)) || STATE.customers.find(c=>c.name===ST_SEL);
   if(!cust) return '';
   const orders=stCustOrders();
-  const today=new Date().toISOString().slice(0,10);
+  const today=kToday();
   const strip=s=>String(s||'').replace(/<[^>]*>/g,'');
   const months={}; orders.forEach(o=>{ const mk=String(o.date||'').slice(0,7)||'—'; (months[mk]=months[mk]||[]).push(o); });
   const mkeys=Object.keys(months).sort().reverse();
@@ -431,8 +433,8 @@ function prMins(t){var a=String(t||'').split(':');return (Number(a[0])||0)*60+(N
 function prHours(s){var d=prMins(s.out)-prMins(s.in); if(d<0)d+=1440; d-=Number(s.brk||0); return Math.max(0,d)/60;}
 function prWageOf(id){var e=(STATE.employees||[]).find(x=>x.id===id); return e?Number(e.wage):0;}
 function prPay(s){return prHours(s)*prWageOf(s.emp)*(Number(s.mult)||1);}
-function prToday(){return new Date().toISOString().slice(0,10);}
-function prWeekKey(dateStr){var d=new Date(String(dateStr)+'T00:00'); if(isNaN(d.getTime()))return ''; var off=(d.getDay()+6)%7; d.setDate(d.getDate()-off); return d.toISOString().slice(0,10);}
+function prToday(){return kToday();}
+function prWeekKey(dateStr){var d=new Date(String(dateStr)+'T00:00'); if(isNaN(d.getTime()))return ''; var off=(d.getDay()+6)%7; d.setDate(d.getDate()-off); var y=d.getFullYear(),m=('0'+(d.getMonth()+1)).slice(-2),dd=('0'+d.getDate()).slice(-2); return y+'-'+m+'-'+dd;}
 function prShiftsOf(id){return (STATE.shifts||[]).filter(s=>s.emp===id).sort((a,b)=>String(b.date).localeCompare(String(a.date)));}
 function prMonthTotal(id){var ym=prToday().slice(0,7); return (STATE.shifts||[]).filter(s=>s.emp===id&&String(s.date).slice(0,7)===ym).reduce((t,s)=>t+prPay(s),0);}
 function prWeekTotal(id){var w=prWeekKey(prToday()); return (STATE.shifts||[]).filter(s=>s.emp===id&&prWeekKey(s.date)===w).reduce((t,s)=>t+prPay(s),0);}
@@ -511,7 +513,7 @@ async function delShiftRec(id){ await api('emp',{op:'delShift',id}); toast(t('sa
 function viewHome(){
   const orders=STATE.orders||[], custs=STATE.customers||[];
   const pl=plCalc();
-  const today=new Date().toISOString().slice(0,10);
+  const today=kToday();
   const todayOrders=orders.filter(o=>String(o.date||'').slice(0,10)===today).length;
   const readyCnt=orders.filter(o=>o.status==='준비완료').length;
   const waitCnt=orders.filter(o=>o.status==='입금대기').length;
@@ -581,7 +583,7 @@ function viewNew(){
     <button class="btn" onclick="submitOrder()">${t('save_order')}</button>
   </div>`;
 }
-function bindNew(){ CART=[]; document.getElementById('oDate').value=new Date().toISOString().slice(0,10); addLine(); }
+function bindNew(){ CART=[]; document.getElementById('oDate').value=kToday(); addLine(); }
 function addLine(){ CART.push({name:'',qty:1,price:0}); drawLines(); }
 function drawLines(){
   const box=document.getElementById('lines'); if(!box)return;
@@ -809,7 +811,7 @@ async function saveItem(id){
 /* 수익·지출 (원가·마진 + 지출 → 순이익) */
 // 이번 달 손익 계산 (전부 화면에서 계산 — 이번 달 '배달완료' 주문 기준)
 function plCalc(){
-  const ym=new Date().toISOString().slice(0,7);
+  const ym=kToday().slice(0,7);
   const itemCost={}; (STATE.items||[]).forEach(it=>{ itemCost[it.name]=Number(it.cost||0); });
   let sales=0, collected=0, cogs=0;
   (STATE.orders||[]).forEach(o=>{
@@ -856,7 +858,7 @@ function viewMoney(){
     </select>
     <div class="row" style="margin-top:8px">
       <div style="flex:1"><label style="margin:0 0 3px">${t('exp_amt')}</label><input type="number" id="exAmt" inputmode="numeric"></div>
-      <div style="flex:1"><label style="margin:0 0 3px">${t('order_date')}</label><input type="date" id="exDate" value="${new Date().toISOString().slice(0,10)}"></div>
+      <div style="flex:1"><label style="margin:0 0 3px">${t('order_date')}</label><input type="date" id="exDate" value="${kToday()}"></div>
     </div>
     <label>${t('exp_memo')}</label><input id="exMemo">
     <button class="btn" onclick="addExpense2()">${t('add')}</button>
@@ -877,7 +879,7 @@ async function addExpense2(){
   const cat=document.getElementById('exCat').value;
   const amt=Number(document.getElementById('exAmt').value)||0;
   if(amt<=0) return toast(t('exp_amt'));
-  const date=document.getElementById('exDate').value||new Date().toISOString().slice(0,10);
+  const date=document.getElementById('exDate').value||kToday();
   const memo=document.getElementById('exMemo').value.trim();
   await api('addExpense',{cat,amount:amt,date,memo});
   toast(t('saved')); go('money');
